@@ -33,6 +33,19 @@ jobs:
           grep -F "const VERSION      = '${TAG#v}'" kangiroo-workshop-bookings.php
           grep -F "const VERSION = '${TAG#v}'" kangiroo-workshop-bookings.php
 
+      - name: Security preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En --include='*.php' '\\b(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)\\s*\\(' .; then
+            echo "High-risk PHP primitive found."
+            exit 1
+          fi
+          grep -F "openssl_verify" kangiroo-workshop-bookings.php
+          grep -F "hash_equals( \\$release['sha256'], \\$actual )" kangiroo-workshop-bookings.php
+          grep -F "KWB_RELEASE_PUBLIC_KEY" kangiroo-workshop-bookings.php
+          php -l kangiroo-workshop-bookings.php
+
       - name: Require signing key
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
