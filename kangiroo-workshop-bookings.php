@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kangiroo Workshop Bookings for WooCommerce
  * Description: Lightweight workshop booking slots for WooCommerce products with capacity control and Google Calendar / iCalendar links in customer emails.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: e-iT
  * Requires Plugins: woocommerce
  * Requires at least: 6.4
@@ -35,7 +35,7 @@ add_action(
 
 final class Kangiroo_Workshop_Bookings {
 
-	const VERSION      = '0.1.0';
+	const VERSION      = '0.2.0';
 	const META_ENABLED = '_kwb_enabled';
 	const META_SLOTS   = '_kwb_slots';
 
@@ -104,6 +104,7 @@ final class Kangiroo_Workshop_Bookings {
 		if ( ! is_string( $slots ) ) {
 			$slots = '';
 		}
+		wp_nonce_field( 'kwb_save_product_' . $post->ID, 'kwb_nonce' );
 		?>
 		<div id="kwb_booking_product_data" class="panel woocommerce_options_panel hidden">
 			<div class="options_group">
@@ -141,11 +142,23 @@ final class Kangiroo_Workshop_Bookings {
 			return;
 		}
 
+		$nonce = isset( $_POST['kwb_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['kwb_nonce'] ) ) : '';
+
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'kwb_save_product_' . $post_id ) ) {
+			return;
+		}
+
 		$enabled = isset( $_POST[ self::META_ENABLED ] ) ? 'yes' : 'no';
 		update_post_meta( $post_id, self::META_ENABLED, $enabled );
 
-		$raw   = isset( $_POST[ self::META_SLOTS ] ) ? wp_unslash( $_POST[ self::META_SLOTS ] ) : '';
-		$lines = preg_split( '/\r\n|\r|\n/', (string) $raw );
+		$raw = isset( $_POST[ self::META_SLOTS ] ) ? (string) wp_unslash( $_POST[ self::META_SLOTS ] ) : '';
+
+		// Prevent oversized admin payloads from being stored or parsed.
+		if ( strlen( $raw ) > 100000 ) {
+			$raw = substr( $raw, 0, 100000 );
+		}
+
+		$lines = array_slice( preg_split( '/\r\n|\r|\n/', $raw ), 0, 500 );
 		$clean = array();
 
 		foreach ( $lines as $line ) {
@@ -175,7 +188,7 @@ final class Kangiroo_Workshop_Bookings {
 				continue;
 			}
 
-			$capacity = max( 1, absint( $capacity ) );
+			$capacity = min( 10000, max( 1, absint( $capacity ) ) );
 			$clean[]  = sprintf( '%s|%s|%s|%d', $date, $start, $end, $capacity );
 		}
 
@@ -232,7 +245,7 @@ final class Kangiroo_Workshop_Bookings {
 				'date'     => $date,
 				'start'    => $start,
 				'end'      => $end,
-				'capacity' => max( 1, absint( $capacity ) ),
+				'capacity' => min( 10000, max( 1, absint( $capacity ) ) ),
 				'start_dt' => $start_dt,
 				'end_dt'   => $end_dt,
 			);
@@ -613,11 +626,19 @@ final class Kangiroo_Workshop_Bookings {
 	}
 
 	private static function signature( $order_id, $item_id ) {
-		return hash_hmac(
-			'sha256',
-			absint( $order_id ) . '|' . absint( $item_id ),
-			wp_salt( 'auth' )
-		);
+		$order = wc_get_order( absint( $order_id ) );
+		$item  = $order ? $order->get_item( absint( $item_id ) ) : false;
+
+		$context = absint( $order_id ) . '|' . absint( $item_id );
+
+		if ( $order && $item ) {
+			$context .= '|' . (string) $order->get_order_key();
+			$context .= '|' . (string) $item->get_meta( '_kwb_date', true );
+			$context .= '|' . (string) $item->get_meta( '_kwb_start', true );
+			$context .= '|' . (string) $item->get_meta( '_kwb_end', true );
+		}
+
+		return hash_hmac( 'sha256', $context, wp_salt( 'auth' ) );
 	}
 
 	private static function ics_url( $order_id, $item_id ) {
@@ -707,6 +728,8 @@ final class Kangiroo_Workshop_Bookings {
 		);
 
 		nocache_headers();
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Security-Policy: default-src \'none\'; sandbox' );
 		header( 'Content-Type: text/calendar; charset=utf-8' );
 		header(
 			'Content-Disposition: attachment; filename="kangiroo-booking-' .
@@ -727,3 +750,295 @@ final class Kangiroo_Workshop_Bookings {
 }
 
 Kangiroo_Workshop_Bookings::init();
+
+
+/**
+ * Fail-closed GitHub updater.
+ *
+ * Updates are only offered when a trusted public signing key is configured via:
+ * define( 'KWB_RELEASE_PUBLIC_KEY', '-----BEGIN PUBLIC KEY-----...-----END PUBLIC KEY-----' );
+ *
+ * Every release must contain the exact ZIP, SHA-256 checksum and detached RSA signature.
+ * The plugin refuses to install the update if any of those checks fail.
+ */
+final class KWB_GitHub_Updater {
+
+	const VERSION = '0.2.0';
+	const API     = 'https://api.github.com/repos/TonyBlue5/woocommerce-workshop-bookings/releases/latest';
+	const SLUG    = 'kangiroo-workshop-bookings';
+
+	public static function init() {
+		if ( ! self::public_key() ) {
+			return;
+		}
+
+		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'updates' ) );
+		add_filter( 'plugins_api', array( __CLASS__, 'details' ), 20, 3 );
+		add_filter( 'upgrader_pre_download', array( __CLASS__, 'verify_download' ), 10, 4 );
+	}
+
+	private static function public_key() {
+		if ( ! defined( 'KWB_RELEASE_PUBLIC_KEY' ) ) {
+			return '';
+		}
+
+		$key = trim( (string) KWB_RELEASE_PUBLIC_KEY );
+
+		if (
+			false === strpos( $key, '-----BEGIN PUBLIC KEY-----' ) ||
+			false === strpos( $key, '-----END PUBLIC KEY-----' )
+		) {
+			return '';
+		}
+
+		return $key;
+	}
+
+	private static function trusted_asset_url( $url, $filename ) {
+		if ( ! is_string( $url ) || '' === $url ) {
+			return false;
+		}
+
+		$parts = wp_parse_url( $url );
+
+		if ( empty( $parts['scheme'] ) || 'https' !== strtolower( $parts['scheme'] ) ) {
+			return false;
+		}
+
+		if ( empty( $parts['host'] ) || 'github.com' !== strtolower( $parts['host'] ) ) {
+			return false;
+		}
+
+		$path   = isset( $parts['path'] ) ? (string) $parts['path'] : '';
+		$prefix = '/TonyBlue5/woocommerce-workshop-bookings/releases/download/';
+
+		if ( 0 !== strpos( $path, $prefix ) ) {
+			return false;
+		}
+
+		return '/' . $filename === substr( $path, -strlen( '/' . $filename ) );
+	}
+
+	private static function release() {
+		$cached = get_site_transient( 'kwb_github_release' );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
+		$response = wp_remote_get(
+			self::API,
+			array(
+				'timeout'     => 12,
+				'redirection' => 0,
+				'headers'     => array(
+					'Accept'     => 'application/vnd.github+json',
+					'User-Agent' => 'Kangiroo-Workshop-Bookings/' . self::VERSION,
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			set_site_transient( 'kwb_github_release', array(), HOUR_IN_SECONDS );
+			return array();
+		}
+
+		$json = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $json ) ) {
+			set_site_transient( 'kwb_github_release', array(), HOUR_IN_SECONDS );
+			return array();
+		}
+
+		$version = ltrim( (string) ( $json['tag_name'] ?? '' ), 'vV' );
+
+		if ( ! preg_match( '/^\d+\.\d+\.\d+$/', $version ) ) {
+			set_site_transient( 'kwb_github_release', array(), HOUR_IN_SECONDS );
+			return array();
+		}
+
+		$assets = array();
+
+		foreach ( (array) ( $json['assets'] ?? array() ) as $asset ) {
+			$name = isset( $asset['name'] ) ? sanitize_file_name( $asset['name'] ) : '';
+			$url  = isset( $asset['browser_download_url'] ) ? esc_url_raw( $asset['browser_download_url'] ) : '';
+
+			if ( $name && $url ) {
+				$assets[ $name ] = $url;
+			}
+		}
+
+		$zip_name = 'kangiroo-workshop-bookings.zip';
+		$sha_name = 'kangiroo-workshop-bookings.zip.sha256';
+		$sig_name = 'kangiroo-workshop-bookings.zip.sig';
+
+		if (
+			empty( $assets[ $zip_name ] ) ||
+			empty( $assets[ $sha_name ] ) ||
+			empty( $assets[ $sig_name ] ) ||
+			! self::trusted_asset_url( $assets[ $zip_name ], $zip_name ) ||
+			! self::trusted_asset_url( $assets[ $sha_name ], $sha_name ) ||
+			! self::trusted_asset_url( $assets[ $sig_name ], $sig_name )
+		) {
+			set_site_transient( 'kwb_github_release', array(), HOUR_IN_SECONDS );
+			return array();
+		}
+
+		$checksum_response = wp_remote_get(
+			$assets[ $sha_name ],
+			array(
+				'timeout'     => 10,
+				'redirection' => 5,
+				'headers'     => array( 'User-Agent' => 'Kangiroo-Workshop-Bookings/' . self::VERSION ),
+			)
+		);
+
+		if (
+			is_wp_error( $checksum_response ) ||
+			200 !== wp_remote_retrieve_response_code( $checksum_response ) ||
+			! preg_match( '/\b([a-f0-9]{64})\b/i', wp_remote_retrieve_body( $checksum_response ), $match )
+		) {
+			set_site_transient( 'kwb_github_release', array(), HOUR_IN_SECONDS );
+			return array();
+		}
+
+		$data = array(
+			'version'   => $version,
+			'package'   => $assets[ $zip_name ],
+			'sha256'    => strtolower( $match[1] ),
+			'signature' => $assets[ $sig_name ],
+			'url'       => isset( $json['html_url'] ) ? esc_url_raw( $json['html_url'] ) : '',
+			'body'      => isset( $json['body'] ) ? wp_kses_post( $json['body'] ) : '',
+		);
+
+		set_site_transient( 'kwb_github_release', $data, 12 * HOUR_IN_SECONDS );
+
+		return $data;
+	}
+
+	public static function updates( $transient ) {
+		if ( ! is_object( $transient ) || empty( $transient->checked ) ) {
+			return $transient;
+		}
+
+		$release = self::release();
+		$plugin  = plugin_basename( __FILE__ );
+
+		if ( $release && version_compare( self::VERSION, $release['version'], '<' ) ) {
+			$transient->response[ $plugin ] = (object) array(
+				'slug'         => self::SLUG,
+				'plugin'       => $plugin,
+				'new_version'  => $release['version'],
+				'url'          => $release['url'],
+				'package'      => $release['package'],
+				'requires'     => '6.4',
+				'requires_php' => '7.4',
+			);
+		} else {
+			unset( $transient->response[ $plugin ] );
+		}
+
+		return $transient;
+	}
+
+	public static function details( $result, $action, $args ) {
+		if ( 'plugin_information' !== $action || empty( $args->slug ) || self::SLUG !== $args->slug ) {
+			return $result;
+		}
+
+		$release = self::release();
+
+		if ( ! $release ) {
+			return $result;
+		}
+
+		return (object) array(
+			'name'          => 'Kangiroo Workshop Bookings for WooCommerce',
+			'slug'          => self::SLUG,
+			'version'       => $release['version'],
+			'author'        => 'e-iT',
+			'homepage'      => $release['url'],
+			'download_link' => $release['package'],
+			'requires'      => '6.4',
+			'requires_php'  => '7.4',
+			'sections'      => array(
+				'description' => 'Workshop booking layer for WooCommerce.',
+				'changelog'   => $release['body'] ? $release['body'] : 'Security and compatibility maintenance release.',
+			),
+		);
+	}
+
+	public static function verify_download( $reply, $package, $upgrader, $hook_extra ) {
+		$release = self::release();
+
+		if ( ! $release || $package !== $release['package'] ) {
+			return $reply;
+		}
+
+		$public_key = self::public_key();
+
+		if ( ! $public_key || ! function_exists( 'openssl_verify' ) ) {
+			return new WP_Error(
+				'kwb_crypto_unavailable',
+				'Kangiroo Workshop Bookings blocked the update because cryptographic signature verification is unavailable.'
+			);
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+
+		$tmp = download_url( $package, 300 );
+
+		if ( is_wp_error( $tmp ) ) {
+			return $tmp;
+		}
+
+		$actual = strtolower( hash_file( 'sha256', $tmp ) );
+
+		if ( ! hash_equals( $release['sha256'], $actual ) ) {
+			@unlink( $tmp );
+			return new WP_Error(
+				'kwb_bad_checksum',
+				'Kangiroo Workshop Bookings blocked the update: SHA-256 verification failed.'
+			);
+		}
+
+		$sig_response = wp_remote_get(
+			$release['signature'],
+			array(
+				'timeout'     => 15,
+				'redirection' => 5,
+				'headers'     => array( 'User-Agent' => 'Kangiroo-Workshop-Bookings/' . self::VERSION ),
+			)
+		);
+
+		if ( is_wp_error( $sig_response ) || 200 !== wp_remote_retrieve_response_code( $sig_response ) ) {
+			@unlink( $tmp );
+			return new WP_Error(
+				'kwb_signature_missing',
+				'Kangiroo Workshop Bookings blocked the update: the digital signature could not be downloaded.'
+			);
+		}
+
+		$signature = wp_remote_retrieve_body( $sig_response );
+		$contents  = file_get_contents( $tmp );
+
+		$verified = is_string( $signature ) &&
+			'' !== $signature &&
+			false !== $contents &&
+			1 === openssl_verify( $contents, $signature, $public_key, OPENSSL_ALGO_SHA256 );
+
+		unset( $contents );
+
+		if ( ! $verified ) {
+			@unlink( $tmp );
+			return new WP_Error(
+				'kwb_bad_signature',
+				'Kangiroo Workshop Bookings blocked the update: publisher signature verification failed.'
+			);
+		}
+
+		return $tmp;
+	}
+}
+
+KWB_GitHub_Updater::init();
