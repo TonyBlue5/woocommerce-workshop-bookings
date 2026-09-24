@@ -151,7 +151,7 @@ final class Kangiroo_Workshop_Bookings {
 		$enabled = isset( $_POST[ self::META_ENABLED ] ) ? 'yes' : 'no';
 		update_post_meta( $post_id, self::META_ENABLED, $enabled );
 
-		$raw = isset( $_POST[ self::META_SLOTS ] ) ? (string) wp_unslash( $_POST[ self::META_SLOTS ] ) : '';
+		$raw = isset( $_POST[ self::META_SLOTS ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ self::META_SLOTS ] ) ) : '';
 
 		// Prevent oversized admin payloads from being stored or parsed.
 		if ( strlen( $raw ) > 100000 ) {
@@ -268,6 +268,7 @@ final class Kangiroo_Workshop_Bookings {
 
 		$slots = self::parse_slots( $product->get_id() );
 		$now   = new DateTimeImmutable( 'now', wp_timezone() );
+		wp_nonce_field( 'kwb_add_to_cart_' . $product->get_id(), 'kwb_cart_nonce' );
 		?>
 		<div class="kwb-booking-fields" style="margin:1em 0">
 			<label for="kwb_slot" style="display:block;font-weight:600;margin-bottom:.35em">
@@ -314,6 +315,13 @@ final class Kangiroo_Workshop_Bookings {
 			return $passed;
 		}
 
+		$nonce = isset( $_POST['kwb_cart_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['kwb_cart_nonce'] ) ) : '';
+
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'kwb_add_to_cart_' . $base_product_id ) ) {
+			wc_add_notice( __( 'Η φόρμα κράτησης έληξε. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.', 'kangiroo-workshop-bookings' ), 'error' );
+			return false;
+		}
+
 		$slot_id = isset( $_POST['kwb_slot'] ) ? sanitize_text_field( wp_unslash( $_POST['kwb_slot'] ) ) : '';
 		$slots   = self::parse_slots( $base_product_id );
 
@@ -349,6 +357,12 @@ final class Kangiroo_Workshop_Bookings {
 		$base_product_id = $variation_id ? wp_get_post_parent_id( $variation_id ) : $product_id;
 
 		if ( ! self::is_booking_product( $base_product_id ) ) {
+			return $cart_item_data;
+		}
+
+		$nonce = isset( $_POST['kwb_cart_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['kwb_cart_nonce'] ) ) : '';
+
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'kwb_add_to_cart_' . $base_product_id ) ) {
 			return $cart_item_data;
 		}
 
@@ -654,6 +668,7 @@ final class Kangiroo_Workshop_Bookings {
 	}
 
 	public static function maybe_download_ics() {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only endpoint authenticated by a per-order HMAC signature.
 		if ( empty( $_GET['kwb_ics'] ) ) {
 			return;
 		}
@@ -736,7 +751,9 @@ final class Kangiroo_Workshop_Bookings {
 			$order_id . '-' . $item_id . '.ics"'
 		);
 
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- RFC 5545 payload; every dynamic field is escaped by ics_escape() and headers force text/calendar.
 		echo implode( "\r\n", $ics ) . "\r\n";
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;
 	}
 
