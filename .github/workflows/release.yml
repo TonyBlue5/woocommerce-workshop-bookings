@@ -1,0 +1,49 @@
+name: Build verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag, e.g. v0.1.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Validate version and syntax
+        env:
+          TAG: ${{ inputs.version }}
+        run: |
+          echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          php -l kangiroo-workshop-bookings.php
+          grep -F "Version: ${TAG#v}" kangiroo-workshop-bookings.php
+          grep -F "const VERSION = '${TAG#v}'" kangiroo-workshop-bookings.php
+
+      - name: Build plugin ZIP and checksum
+        run: |
+          mkdir -p build/kangiroo-workshop-bookings
+          cp kangiroo-workshop-bookings.php readme.txt LICENSE build/kangiroo-workshop-bookings/
+          cd build
+          zip -qr kangiroo-workshop-bookings.zip kangiroo-workshop-bookings
+          sha256sum kangiroo-workshop-bookings.zip > kangiroo-workshop-bookings.zip.sha256
+          unzip -tq kangiroo-workshop-bookings.zip
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.version }}
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+          gh release create "$TAG"             build/kangiroo-workshop-bookings.zip             build/kangiroo-workshop-bookings.zip.sha256             --generate-notes             --title "Kangiroo Workshop Bookings ${TAG#v}"
