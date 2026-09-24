@@ -48,7 +48,7 @@ jobs:
 
       - name: Require signing key
         env:
-          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          RELEASE_SIGNING_KEY: ${{ secrets.KWB_RELEASE_SIGNING_KEY }}
         run: |
           set -euo pipefail
           test -n "$RELEASE_SIGNING_KEY"
