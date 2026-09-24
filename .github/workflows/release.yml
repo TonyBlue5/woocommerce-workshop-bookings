@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -En --include='*.php' '\\b(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)\\s*\\(' .; then
+          if grep -REn --include='*.php' -E '(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)[[:space:]]*[(]' .; then
             echo "High-risk PHP primitive found."
             exit 1
           fi
@@ -70,20 +70,22 @@ jobs:
       - name: Sign exact release archive
         run: |
           set -euo pipefail
-          openssl dgst -sha256             -sign /tmp/kwb-release-private.pem             -out build/kangiroo-workshop-bookings.zip.sig             build/kangiroo-workshop-bookings.zip
+          openssl dgst -sha256 \
+            -sign /tmp/kwb-release-private.pem \
+            -out build/kangiroo-workshop-bookings.zip.sig \
+            build/kangiroo-workshop-bookings.zip
           test -s build/kangiroo-workshop-bookings.zip.sig
           rm -f /tmp/kwb-release-private.pem
 
       - name: Verify signature before publishing
-        env:
-          RELEASE_PUBLIC_KEY: ${{ secrets.RELEASE_PUBLIC_KEY }}
         run: |
           set -euo pipefail
-          test -n "$RELEASE_PUBLIC_KEY"
-          printf '%s' "$RELEASE_PUBLIC_KEY" > /tmp/kwb-release-public.pem
-          openssl pkey -pubin -in /tmp/kwb-release-public.pem -noout
-          openssl dgst -sha256             -verify /tmp/kwb-release-public.pem             -signature build/kangiroo-workshop-bookings.zip.sig             build/kangiroo-workshop-bookings.zip
-          rm -f /tmp/kwb-release-public.pem
+          test -s release-public.pem
+          openssl pkey -pubin -in release-public.pem -noout
+          openssl dgst -sha256 \
+            -verify release-public.pem \
+            -signature build/kangiroo-workshop-bookings.zip.sig \
+            build/kangiroo-workshop-bookings.zip
 
       - name: Create tag and GitHub release
         env:
@@ -93,4 +95,9 @@ jobs:
           set -euo pipefail
           git tag "$TAG"
           git push origin "$TAG"
-          gh release create "$TAG"             build/kangiroo-workshop-bookings.zip             build/kangiroo-workshop-bookings.zip.sha256             build/kangiroo-workshop-bookings.zip.sig             --generate-notes             --title "Kangiroo Workshop Bookings ${TAG#v}"
+          gh release create "$TAG" \
+            build/kangiroo-workshop-bookings.zip \
+            build/kangiroo-workshop-bookings.zip.sha256 \
+            build/kangiroo-workshop-bookings.zip.sig \
+            --generate-notes \
+            --title "Kangiroo Workshop Bookings ${TAG#v}"
