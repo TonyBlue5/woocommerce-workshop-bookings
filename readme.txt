@@ -1,0 +1,46 @@
+=== Kangiroo Workshop Bookings for WooCommerce ===
+Contributors: TonyBlue5
+Tags: woocommerce, bookings, workshops, calendar, icalendar
+Requires at least: 6.4
+Requires PHP: 7.4
+Requires Plugins: woocommerce
+Stable tag: 0.1.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Lightweight workshop booking slots for WooCommerce products with capacity control and Google Calendar / iCalendar links.
+
+== Description ==
+
+Kangiroo Workshop Bookings keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
+
+Current features:
+* Enable booking per WooCommerce product.
+* Multiple date/time slots per workshop.
+* Capacity per slot.
+* Product quantity acts as number of seats/children.
+* Capacity validation before checkout.
+* Booking data stored on WooCommerce order items.
+* Google Calendar links in customer order emails.
+* Apple Calendar / iCalendar (.ics) downloads.
+* HPOS-aware order access using WooCommerce APIs.
+
+== Installation ==
+
+1. Upload and activate the plugin.
+2. Open a WooCommerce product.
+3. Go to Product data > Workshop Booking.
+4. Enable booking.
+5. Add one slot per line using: YYYY-MM-DD|HH:MM|HH:MM|CAPACITY
+
+Example:
+2026-10-03|11:00|11:45|10
+2026-10-10|11:00|11:45|10
+
+== Changelog ==
+
+= 0.1.0 =
+* Initial booking-slot implementation.
+* Capacity validation.
+* WooCommerce order integration.
+* Google Calendar and iCalendar support.
