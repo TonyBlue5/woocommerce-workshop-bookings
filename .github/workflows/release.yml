@@ -42,8 +42,9 @@ jobs:
             exit 1
           fi
           grep -F "openssl_verify" kangiroo-workshop-bookings.php
-          grep -F "hash_equals( \\$release['sha256'], \\$actual )" kangiroo-workshop-bookings.php
-          grep -F "KWB_RELEASE_PUBLIC_KEY" kangiroo-workshop-bookings.php
+          grep -F 'hash_equals( $release['"'"'sha256'"'"'], $actual )' kangiroo-workshop-bookings.php
+          grep -F "const PUBLIC_KEY" kangiroo-workshop-bookings.php
+          test -s release-public.pem
           php -l kangiroo-workshop-bookings.php
 
       - name: Require signing key
