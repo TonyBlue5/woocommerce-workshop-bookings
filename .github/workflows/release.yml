@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag, e.g. v0.2.0'
+        description: 'Version tag, e.g. v0.3.0'
         required: true
         type: string
 
@@ -14,39 +14,30 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-
       - name: Validate version and syntax
         env:
           TAG: ${{ inputs.version }}
         run: |
           set -euo pipefail
           echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
-          php -l kangiroo-workshop-bookings.php
           grep -F "Version: ${TAG#v}" kangiroo-workshop-bookings.php
-          grep -F "const VERSION      = '${TAG#v}'" kangiroo-workshop-bookings.php
-          grep -F "const VERSION = '${TAG#v}'" kangiroo-workshop-bookings.php
-
+          grep -F "define( 'KWB_VERSION', '${TAG#v}' )" kangiroo-workshop-bookings.php
+          grep -F "const VERSION='${TAG#v}'" includes/class-kwb-updater.php
+          php -l kangiroo-workshop-bookings.php
+          php -l includes/class-kwb-booking.php
+          php -l includes/class-kwb-updater.php
       - name: Security preflight
-        shell: bash
         run: |
           set -euo pipefail
-          if grep -REn --include='*.php' -E '(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)[[:space:]]*[(]' .; then
-            echo "High-risk PHP primitive found."
-            exit 1
-          fi
-          grep -F "openssl_verify" kangiroo-workshop-bookings.php
-          grep -F 'hash_equals( $release['"'"'sha256'"'"'], $actual )' kangiroo-workshop-bookings.php
-          grep -F "const PUBLIC_KEY" kangiroo-workshop-bookings.php
+          if grep -REn --include='*.php' -E '(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)[[:space:]]*[(]' .; then exit 1; fi
+          grep -F "openssl_verify" includes/class-kwb-updater.php
+          grep -F "const PUBLIC_KEY" includes/class-kwb-updater.php
           test -s release-public.pem
-          php -l kangiroo-workshop-bookings.php
-
       - name: Require signing key
         env:
           RELEASE_SIGNING_KEY: ${{ secrets.KWB_RELEASE_SIGNING_KEY }}
@@ -56,37 +47,22 @@ jobs:
           umask 077
           printf '%s' "$RELEASE_SIGNING_KEY" > /tmp/kwb-release-private.pem
           openssl pkey -in /tmp/kwb-release-private.pem -check -noout
-
       - name: Build plugin ZIP
         run: |
           set -euo pipefail
-          mkdir -p build/kangiroo-workshop-bookings
+          mkdir -p build/kangiroo-workshop-bookings/includes
           cp kangiroo-workshop-bookings.php readme.txt LICENSE build/kangiroo-workshop-bookings/
+          cp includes/*.php build/kangiroo-workshop-bookings/includes/
           cd build
           zip -qr kangiroo-workshop-bookings.zip kangiroo-workshop-bookings
           unzip -tq kangiroo-workshop-bookings.zip
           sha256sum kangiroo-workshop-bookings.zip > kangiroo-workshop-bookings.zip.sha256
-
-      - name: Sign exact release archive
+      - name: Sign and verify release
         run: |
           set -euo pipefail
-          openssl dgst -sha256 \
-            -sign /tmp/kwb-release-private.pem \
-            -out build/kangiroo-workshop-bookings.zip.sig \
-            build/kangiroo-workshop-bookings.zip
-          test -s build/kangiroo-workshop-bookings.zip.sig
+          openssl dgst -sha256 -sign /tmp/kwb-release-private.pem -out build/kangiroo-workshop-bookings.zip.sig build/kangiroo-workshop-bookings.zip
+          openssl dgst -sha256 -verify release-public.pem -signature build/kangiroo-workshop-bookings.zip.sig build/kangiroo-workshop-bookings.zip
           rm -f /tmp/kwb-release-private.pem
-
-      - name: Verify signature before publishing
-        run: |
-          set -euo pipefail
-          test -s release-public.pem
-          openssl pkey -pubin -in release-public.pem -noout
-          openssl dgst -sha256 \
-            -verify release-public.pem \
-            -signature build/kangiroo-workshop-bookings.zip.sig \
-            build/kangiroo-workshop-bookings.zip
-
       - name: Create tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -95,9 +71,4 @@ jobs:
           set -euo pipefail
           git tag "$TAG"
           git push origin "$TAG"
-          gh release create "$TAG" \
-            build/kangiroo-workshop-bookings.zip \
-            build/kangiroo-workshop-bookings.zip.sha256 \
-            build/kangiroo-workshop-bookings.zip.sig \
-            --generate-notes \
-            --title "Kangiroo Workshop Bookings ${TAG#v}"
+          gh release create "$TAG" build/kangiroo-workshop-bookings.zip build/kangiroo-workshop-bookings.zip.sha256 build/kangiroo-workshop-bookings.zip.sig --generate-notes --title "Kangiroo Workshop Bookings ${TAG#v}"

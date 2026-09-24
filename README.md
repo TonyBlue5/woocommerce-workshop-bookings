@@ -49,3 +49,15 @@ Versions follow Semantic Versioning. Stable builds are tagged as `vX.Y.Z`. The r
 ## License
 
 GPL-2.0-or-later.
+
+
+## v0.3 recurring workshop model
+
+A workshop product can enable either or both purchase modes:
+
+- **Monthly participation**: one purchase reserves the selected number of seats in every scheduled occurrence of the chosen month.
+- **Single participation**: one purchase reserves a seat only in the selected occurrence.
+
+Both modes share the same occurrence capacity. If a Tuesday session has 10 seats and 7 monthly participants already include that Tuesday, only 3 single-session seats remain for that date.
+
+Weekly schedules use ISO weekdays (1=Monday … 7=Sunday), with optional blackout dates for holidays or cancelled classes. Monthly iCalendar exports contain all booked occurrences.
