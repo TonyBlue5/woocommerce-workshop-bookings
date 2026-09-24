@@ -50,15 +50,19 @@ kwb_assert(
 );
 
 // 4. Calendar signatures must be bound to the order item booking data.
-$order = wc_create_order();
-$item  = new WC_Order_Item_Product();
-$item->set_product( wc_get_product( $product_id ) );
-$item->set_quantity( 1 );
-$item->add_meta_data( '_kwb_date', '2030-01-05', true );
-$item->add_meta_data( '_kwb_start', '11:00', true );
-$item->add_meta_data( '_kwb_end', '12:00', true );
-$item_id = $order->add_item( $item );
+$order   = wc_create_order();
+$item_id = $order->add_product( wc_get_product( $product_id ), 1 );
 $order->save();
+
+kwb_assert( is_numeric( $item_id ) && (int) $item_id > 0, 'could not create order line item for signature test' );
+
+$saved_item = $order->get_item( $item_id );
+kwb_assert( $saved_item instanceof WC_Order_Item_Product, 'saved order line item was not retrievable' );
+
+$saved_item->add_meta_data( '_kwb_date', '2030-01-05', true );
+$saved_item->add_meta_data( '_kwb_start', '11:00', true );
+$saved_item->add_meta_data( '_kwb_end', '12:00', true );
+$saved_item->save();
 
 $reflection = new ReflectionClass( 'Kangiroo_Workshop_Bookings' );
 $method     = $reflection->getMethod( 'signature' );
@@ -67,6 +71,7 @@ $method->setAccessible( true );
 $sig_before = $method->invoke( null, $order->get_id(), $item_id );
 
 $saved_item = $order->get_item( $item_id );
+kwb_assert( $saved_item instanceof WC_Order_Item_Product, 'saved order item disappeared before tamper test' );
 $saved_item->update_meta_data( '_kwb_date', '2030-01-06' );
 $saved_item->save();
 
