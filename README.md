@@ -1,4 +1,4 @@
-# Kangiroo Workshop Bookings for WooCommerce
+# Workshop Bookings for WooCommerce
 
 A lightweight WooCommerce extension for selling workshop seats as normal WooCommerce products while keeping the existing checkout and payment gateways.
 
