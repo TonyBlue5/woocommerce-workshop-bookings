@@ -40,9 +40,10 @@ jobs:
         run: |
           set -euo pipefail
           grep -F "openssl_verify" kangiroo-workshop-bookings.php
-          grep -F "hash_equals( $release['sha256'], $actual )" kangiroo-workshop-bookings.php
+          grep -F 'hash_equals( $release['"'"'sha256'"'"'], $actual )' kangiroo-workshop-bookings.php
           grep -F "https://api.github.com/repos/TonyBlue5/woocommerce-workshop-bookings/releases/latest" kangiroo-workshop-bookings.php
-          grep -F "KWB_RELEASE_PUBLIC_KEY" kangiroo-workshop-bookings.php
+          grep -F "const PUBLIC_KEY" kangiroo-workshop-bookings.php
+          test -s release-public.pem
           grep -F "publisher signature verification failed" kangiroo-workshop-bookings.php
 
       - name: Install WordPress Coding Standards
