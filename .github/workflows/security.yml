@@ -1,0 +1,97 @@
+name: Security gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '11 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-security:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: PHP syntax
+        run: php -l kangiroo-workshop-bookings.php
+
+      - name: Reject high-risk PHP primitives
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En --include='*.php' '\b(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)\s*\(' .; then
+            echo "High-risk PHP primitive found."
+            exit 1
+          fi
+
+      - name: Verify updater security invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "openssl_verify" kangiroo-workshop-bookings.php
+          grep -F "hash_equals( $release['sha256'], $actual )" kangiroo-workshop-bookings.php
+          grep -F "https://api.github.com/repos/TonyBlue5/woocommerce-workshop-bookings/releases/latest" kangiroo-workshop-bookings.php
+          grep -F "KWB_RELEASE_PUBLIC_KEY" kangiroo-workshop-bookings.php
+          grep -F "publisher signature verification failed" kangiroo-workshop-bookings.php
+
+      - name: Install WordPress Coding Standards
+        run: |
+          composer global config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+          composer global require --no-interaction             squizlabs/php_codesniffer:^3             dealerdirect/phpcodesniffer-composer-installer:^1             wp-coding-standards/wpcs:^3
+
+      - name: WordPress security sniffs
+        run: |
+          ~/.composer/vendor/bin/phpcs             --standard=WordPress             --sniffs=WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput,WordPress.Security.EscapeOutput             kangiroo-workshop-bookings.php
+
+  runtime-security:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.2', '8.4']
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: wp-cli
+
+      - name: Install latest WordPress, WooCommerce and plugin
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kwb-security
+          wp core download --path=/tmp/kwb-security --force
+          wp config create --path=/tmp/kwb-security --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
+          wp core install --path=/tmp/kwb-security --url=http://localhost --title=KWBSecurity --admin_user=testadmin --admin_password='Strong-Test-Password-2026!' --admin_email=test@example.com --skip-email
+          wp plugin install woocommerce --activate --path=/tmp/kwb-security
+          mkdir -p /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings
+          cp kangiroo-workshop-bookings.php readme.txt /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/
+          wp plugin activate kangiroo-workshop-bookings --path=/tmp/kwb-security
+
+      - name: Run security regression tests
+        run: wp eval-file "$GITHUB_WORKSPACE/tests/security-smoke.php" --path=/tmp/kwb-security | grep security-smoke-ok
