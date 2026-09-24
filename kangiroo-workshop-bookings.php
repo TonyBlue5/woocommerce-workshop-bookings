@@ -36,9 +36,7 @@ add_action(
 	}
 );
 
-require_once KWB_PLUGIN_DIR . 'includes/class-kwb-core.php';
-require_once KWB_PLUGIN_DIR . 'includes/class-kwb-frontend.php';
-require_once KWB_PLUGIN_DIR . 'includes/class-kwb-calendar.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-updater.php';
 
 KWB_GitHub_Updater::init();
@@ -61,8 +59,6 @@ add_action(
 			return;
 		}
 
-		KWB_Core::init();
-		KWB_Frontend::init();
-		KWB_Calendar::init();
+		KWB_Booking::init();
 	}
 );
