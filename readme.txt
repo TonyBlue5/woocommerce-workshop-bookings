@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.1.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,6 +15,11 @@ Lightweight workshop booking slots for WooCommerce products with capacity contro
 Kangiroo Workshop Bookings keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
 
 Current features:
+* Monthly participation that reserves every scheduled session in a selected month.
+* Single-session participation for one available occurrence.
+* Separate monthly and single prices per WooCommerce product.
+* Shared per-occurrence capacity between monthly and single bookings.
+* Weekly recurring schedules and blackout dates.
 * Enable booking per WooCommerce product.
 * Multiple date/time slots per workshop.
 * Capacity per slot.
@@ -39,8 +44,14 @@ Example:
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial booking-slot implementation.
-* Capacity validation.
-* WooCommerce order integration.
-* Google Calendar and iCalendar support.
+= 0.3.0 =
+* Added monthly recurring workshop bookings.
+* Added separate monthly and single-session pricing.
+* Added shared capacity across recurring and individual bookings.
+* Added weekly schedules and blackout dates.
+* Added multi-event iCalendar export for monthly bookings.
+* Added Google Calendar links for every booked occurrence.
+* Added recurring booking security regression tests.
+
+= 0.2.0 =
+* Security hardening and signed GitHub updater.
