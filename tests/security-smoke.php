@@ -13,6 +13,11 @@ update_post_meta($id,'_kwb_weekly_schedule',"2|19:15|20:00|2\n6|11:00|11:45|2");
 update_post_meta($id,'_kwb_blackouts','2030-10-05');
 update_post_meta($id,'_kwb_horizon_months','12');
 
+$wc_product = wc_get_product($id);
+kwb_assert( KWB_Booking::purchasable(false,$wc_product), 'booking product should be purchasable without base WooCommerce price' );
+$price_html = KWB_Booking::price_html('', $wc_product);
+kwb_assert( false !== strpos($price_html,'40') && false !== strpos($price_html,'14'), 'booking price HTML does not expose monthly and single prices' );
+
 $os=KWB_Booking::month_occurrences($id,'2030-10',false);
 kwb_assert(8===count($os),'monthly occurrence generation/blackout handling failed');
 kwb_assert(40.0===KWB_Booking::price($id,'monthly'),'monthly price failed');

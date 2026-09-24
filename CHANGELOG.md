@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+- Booking products are purchasable even when the standard WooCommerce base price is blank.
+- Product pages display the configured monthly and/or single-session booking prices.
+
+
 ## 0.3.0
 - Monthly recurring participation by selected calendar month.
 - Single-session participation alongside monthly participation.

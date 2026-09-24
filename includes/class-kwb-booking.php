@@ -15,6 +15,8 @@ final class KWB_Booking {
 		add_filter('woocommerce_product_data_tabs',array(__CLASS__,'tab'));
 		add_action('woocommerce_product_data_panels',array(__CLASS__,'panel'));
 		add_action('woocommerce_process_product_meta',array(__CLASS__,'save'));
+		add_filter('woocommerce_is_purchasable',array(__CLASS__,'purchasable'),20,2);
+		add_filter('woocommerce_get_price_html',array(__CLASS__,'price_html'),20,2);
 		add_action('woocommerce_before_add_to_cart_button',array(__CLASS__,'fields'));
 		add_filter('woocommerce_add_to_cart_validation',array(__CLASS__,'validate'),10,6);
 		add_filter('woocommerce_add_cart_item_data',array(__CLASS__,'cart_data'),10,3);
@@ -82,6 +84,24 @@ final class KWB_Booking {
 	public static function enabled($id){return'yes'===get_post_meta($id,self::META_ENABLED,true);}
 	public static function mode($id,$m){$k='monthly'===$m?self::META_MONTHLY:self::META_SINGLE;$pk='monthly'===$m?self::META_MONTHLY_PRICE:self::META_SINGLE_PRICE;return'yes'===get_post_meta($id,$k,true)&&''!==(string)get_post_meta($id,$pk,true);}
 	public static function price($id,$m){$k='monthly'===$m?self::META_MONTHLY_PRICE:self::META_SINGLE_PRICE;return(float)wc_format_decimal(get_post_meta($id,$k,true));}
+
+	public static function purchasable($purchasable,$product){
+		if(!$product instanceof WC_Product)return$purchasable;
+		$id=$product->get_parent_id()?:$product->get_id();
+		if(!self::enabled($id))return$purchasable;
+		return self::mode($id,'monthly')||self::mode($id,'single');
+	}
+
+	public static function price_html($html,$product){
+		if(!$product instanceof WC_Product)return$html;
+		$id=$product->get_parent_id()?:$product->get_id();
+		if(!self::enabled($id))return$html;
+		$parts=array();
+		if(self::mode($id,'monthly'))$parts[]=wp_strip_all_tags(wc_price(self::price($id,'monthly'))).'/'.__('μήνα','kangiroo-workshop-bookings');
+		if(self::mode($id,'single'))$parts[]=wp_strip_all_tags(wc_price(self::price($id,'single'))).' '.__('μεμονωμένη συμμετοχή','kangiroo-workshop-bookings');
+		if(!$parts)return$html;
+		return '<span class="price kwb-price">'.esc_html(implode(' ή ',$parts)).'</span>';
+	}
 
 	public static function schedule($id){
 		$out=array();$raw=(string)get_post_meta($id,self::META_SCHEDULE,true);
