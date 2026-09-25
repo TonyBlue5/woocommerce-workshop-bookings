@@ -61,8 +61,8 @@ final class KWB_RSVP {
 		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
-		$subject=sprintf('Υπενθύμιση: %s σήμερα στις %s',$item->get_name(),$occ['start']);
-		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> σήμερα στις <strong>'.esc_html($occ['start']).'</strong>.</p>';
+		$subject=sprintf('Υπενθύμιση: %s — %s στις %s',$item->get_name(),date_i18n('d/m/Y',strtotime($occ['date'])),$occ['start']);
+		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> στις <strong>'.esc_html(date_i18n('d/m/Y',strtotime($occ['date'])).' '.$occ['start']).'</strong>.</p>';
 		$message.='<p>Θα μπορέσετε τελικά να έρθετε;</p>';
 		$message.='<p><a href="'.esc_url($yes).'" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#fff;text-decoration:none;border-radius:4px">ΝΑΙ, θα έρθουμε</a> ';
 		$message.='<a href="'.esc_url($no).'" style="display:inline-block;padding:10px 18px;background:#b32d2e;color:#fff;text-decoration:none;border-radius:4px">ΟΧΙ, δεν θα έρθουμε</a></p>';
