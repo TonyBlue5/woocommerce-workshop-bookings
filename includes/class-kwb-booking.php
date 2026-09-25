@@ -280,12 +280,12 @@ final class KWB_Booking {
 			$count=count($os);
 			if($plain){
 				echo "\n".esc_html($item->get_name())."\n";
-				echo "Προσθέστε την κράτησή σας στο ημερολόγιό σας για να έχετε εύκολα διαθέσιμες την ημερομηνία, την ώρα, την τοποθεσία και τις πληροφορίες του εργαστηρίου.\n";
+				echo "Για Google Calendar χρησιμοποιήστε τον αντίστοιχο σύνδεσμο. Για iPhone, Mac, Outlook ή άλλη εφαρμογή ημερολογίου χρησιμοποιήστε το Apple / Outlook / iCalendar αρχείο. Περιλαμβάνονται ημερομηνία, ώρα, τοποθεσία και πληροφορίες εργαστηρίου.\n";
 				if($google){
 					if($count>1)echo "Για Google Calendar, ανοίξτε κάθε ημερομηνία ξεχωριστά:\n";
 					foreach($os as$o)echo 'Google Calendar — '.wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'].'–'.$o['end'].': '.esc_url_raw(self::google($item,$o,$order,$pid))."\n";
 				}
-				if($ics)echo 'Apple / Outlook / iCalendar'.($count>1?' — όλες οι ημερομηνίες':'').': '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
+				if($ics)echo 'Apple / Outlook / iCalendar'.($count>1?' — το αρχείο περιλαμβάνει όλες τις ημερομηνίες':'').': '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
 				continue;
 			}
 
@@ -293,7 +293,7 @@ final class KWB_Booking {
 			$button='display:inline-block;margin:7px 7px 0 0;padding:10px 14px;border-radius:7px;text-decoration:none;font-weight:600;line-height:1.25';
 			echo '<div style="'.esc_attr($card).'">';
 			echo '<div style="font-size:16px;font-weight:700;margin-bottom:7px">'.esc_html($item->get_name()).'</div>';
-			echo '<div style="font-size:14px;line-height:1.55;margin-bottom:10px">📅 '.esc_html__('Προσθέστε την κράτησή σας στο ημερολόγιό σας, ώστε να έχετε αποθηκευμένα την ημερομηνία, την ώρα, την τοποθεσία και τις πληροφορίες του εργαστηρίου.','woocommerce-workshop-bookings').'</div>';
+			echo '<div style="font-size:14px;line-height:1.55;margin-bottom:10px">📅 '.esc_html__('Πατήστε Google Calendar για να προσθέσετε την κράτηση στο Google ημερολόγιό σας ή Apple / Outlook / iCalendar για iPhone, Mac, Outlook και άλλες εφαρμογές ημερολογίου. Θα αποθηκευτούν η ημερομηνία, η ώρα, η τοποθεσία και οι πληροφορίες του εργαστηρίου.','woocommerce-workshop-bookings').'</div>';
 			if($google){
 				if($count>1)echo '<div style="font-size:13px;color:#5f6b76;margin:5px 0">'.esc_html__('Για Google Calendar, πατήστε κάθε ημερομηνία που θέλετε να προσθέσετε.','woocommerce-workshop-bookings').'</div>';
 				foreach($os as$o){
