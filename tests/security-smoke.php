@@ -64,6 +64,17 @@ kwb_assert(180===$sanitized['reminder_lead_minutes'],'configurable reminder lead
 kwb_assert(1===$sanitized['calendar_google_link_enabled'],'API-free Google calendar link setting failed');
 kwb_assert(1===$sanitized['calendar_ics_enabled'],'iCalendar setting failed');
 
+update_option('woocommerce_store_address','123 Test Street');
+update_option('woocommerce_store_city','Athens');
+update_option('woocommerce_store_postcode','11111');
+update_option('woocommerce_default_country','GR');
+delete_post_meta($id,'_kwb_location_override');
+kwb_assert(false!==strpos(KWB_Booking::location($id),'123 Test Street'),'WooCommerce store-address calendar fallback failed');
+update_post_meta($id,'_kwb_location_override','Custom Workshop Location');
+kwb_assert('Custom Workshop Location'===KWB_Booking::location($id),'per-workshop calendar location override failed');
+update_post_meta($id,'_kwb_calendar_description','Custom calendar description');
+kwb_assert('Custom calendar description'===get_post_meta($id,'_kwb_calendar_description',true),'calendar description override persistence failed');
+
 // A declined occurrence must immediately free its seat.
 $item = $order->get_item($item_id);
 $item->update_meta_data('_kwb_declined_occurrences',array((string)$first['id']));
