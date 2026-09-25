@@ -64,6 +64,25 @@ kwb_assert(180===$sanitized['reminder_lead_minutes'],'configurable reminder lead
 kwb_assert(1===$sanitized['calendar_google_link_enabled'],'API-free Google calendar link setting failed');
 kwb_assert(1===$sanitized['calendar_ics_enabled'],'iCalendar setting failed');
 
+kwb_assert(class_exists('KWB_I18n'),'i18n module missing');
+kwb_assert('Maximum participations per booking'===KWB_I18n::t('max_participations'),'English default translation failed');
+
+// Monthly-only products must still expose actual occurrences to the visual calendar.
+$p2=new WC_Product_Simple();$p2->set_name('Monthly Only Calendar CI');$p2->set_regular_price('1');$id2=$p2->save();
+$tomorrow=(new DateTimeImmutable('tomorrow',wp_timezone()));
+$weekday=(int)$tomorrow->format('N');
+update_post_meta($id2,'_kwb_enabled','yes');
+update_post_meta($id2,'_kwb_monthly_enabled','yes');
+update_post_meta($id2,'_kwb_monthly_price','40');
+update_post_meta($id2,'_kwb_single_enabled','no');
+update_post_meta($id2,'_kwb_single_price','');
+update_post_meta($id2,'_kwb_weekly_schedule',$weekday.'|11:00|11:45|10');
+update_post_meta($id2,'_kwb_horizon_months','1');
+$GLOBALS['product']=wc_get_product($id2);
+ob_start();KWB_Booking::fields();$monthly_only_html=ob_get_clean();
+kwb_assert(false!==strpos($monthly_only_html,$tomorrow->format('Y-m-d')),'monthly-only calendar did not expose scheduled dates');
+kwb_assert(false!==strpos($monthly_only_html,'remaining'),'monthly-only calendar did not expose availability data');
+
 update_option('woocommerce_store_address','123 Test Street');
 update_option('woocommerce_store_city','Athens');
 update_option('woocommerce_store_postcode','11111');
