@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,11 +36,9 @@ Current features:
 2. Open a WooCommerce product.
 3. Go to Product data > Workshop Booking.
 4. Enable booking.
-5. Add one slot per line using: YYYY-MM-DD|HH:MM|HH:MM|CAPACITY
-
-Example:
-2026-10-03|11:00|11:45|10
-2026-10-10|11:00|11:45|10
+5. Use the structured weekday/time/capacity controls to define the weekly schedule.
+6. Add blackout dates with the date picker when needed.
+7. Configure reminders and calendar options under WooCommerce > Workshop Bookings.
 
 == Changelog ==
 
@@ -65,12 +63,13 @@ Example:
 * Four-hour iCalendar alarms.
 
 
-= 0.5.0 =
-* Generic commercial branding by e-iT.
-* Configurable reminders and per-workshop overrides.
-* Google Calendar OAuth connection wizard.
-* Encrypted Google credentials and refresh tokens.
-* Writable calendar selection and connection test.
-* Google event creation with attendee invitations.
-* Google RSVP synchronization back to booking availability.
-* Manual Google sync and diagnostics.
+= 0.6.0 =
+* API-free commercial architecture: no Google Cloud, OAuth or Calendar API setup.
+* Local Add to Google Calendar links for every booked occurrence.
+* Signed Apple / Outlook / iCalendar (.ics) downloads.
+* Configurable reminder email subject, body and lead time.
+* Signed YES / NO RSVP handled directly by the WordPress plugin.
+* Optional automatic seat release on NO for the specific occurrence only.
+* Capacity check before a previously released seat can be reclaimed.
+* Configurable calendar title, description, location and .ics alarm.
+* Per-workshop reminder, RSVP, booking-cutoff, quantity and location overrides.
