@@ -15,6 +15,7 @@ final class KWB_Booking {
 	const META_BOOKING_CUTOFF='_kwb_booking_cutoff_minutes';
 	const META_MAX_QTY='_kwb_max_qty';
 	const META_LOCATION='_kwb_location_override';
+	const META_CAL_DESCRIPTION='_kwb_calendar_description';
 
 	public static function init(){
 		add_filter('woocommerce_product_data_tabs',array(__CLASS__,'tab'));
@@ -73,6 +74,7 @@ final class KWB_Booking {
 		woocommerce_wp_text_input(array('id'=>self::META_BOOKING_CUTOFF,'label'=>__('Κλείσιμο κρατήσεων πριν','woocommerce-workshop-bookings'),'description'=>__('Λεπτά πριν την έναρξη. Κενό = γενική/χωρίς περιορισμό.','woocommerce-workshop-bookings'),'value'=>$g(self::META_BOOKING_CUTOFF),'type'=>'number','custom_attributes'=>array('min'=>'0','max'=>'10080','step'=>'1')));
 		woocommerce_wp_text_input(array('id'=>self::META_MAX_QTY,'label'=>__('Μέγιστα παιδιά ανά κράτηση','woocommerce-workshop-bookings'),'description'=>__('Κενό = χωρίς ειδικό όριο.','woocommerce-workshop-bookings'),'value'=>$g(self::META_MAX_QTY),'type'=>'number','custom_attributes'=>array('min'=>'1','max'=>'100','step'=>'1')));
 		woocommerce_wp_text_input(array('id'=>self::META_LOCATION,'label'=>__('Τοποθεσία override','woocommerce-workshop-bookings'),'description'=>__('Κενό = γενική τοποθεσία.','woocommerce-workshop-bookings'),'value'=>$g(self::META_LOCATION)));
+		woocommerce_wp_textarea_input(array('id'=>self::META_CAL_DESCRIPTION,'label'=>__('Περιγραφή ημερολογίου','woocommerce-workshop-bookings'),'description'=>__('Προαιρετική περιγραφή για Google / Apple / Outlook. Κενό = χρησιμοποιείται η σύντομη περιγραφή του προϊόντος.','woocommerce-workshop-bookings'),'value'=>$g(self::META_CAL_DESCRIPTION),'rows'=>4));
 		?>
 		<div class="kwb-admin-block">
 		<h4>Εβδομαδιαίο πρόγραμμα</h4>
@@ -112,6 +114,7 @@ final class KWB_Booking {
 		$rsvp=isset($_POST[self::META_RSVP_OVERRIDE])?sanitize_key(wp_unslash($_POST[self::META_RSVP_OVERRIDE])):'inherit';
 		update_post_meta($id,self::META_RSVP_OVERRIDE,in_array($rsvp,array('inherit','on','off'),true)?$rsvp:'inherit');
 		$loc=isset($_POST[self::META_LOCATION])?sanitize_text_field(wp_unslash($_POST[self::META_LOCATION])):'';update_post_meta($id,self::META_LOCATION,$loc);
+		$cal_desc=isset($_POST[self::META_CAL_DESCRIPTION])?sanitize_textarea_field(wp_unslash($_POST[self::META_CAL_DESCRIPTION])):'';update_post_meta($id,self::META_CAL_DESCRIPTION,$cal_desc);
 		$raw=isset($_POST[self::META_SCHEDULE])?sanitize_textarea_field(wp_unslash($_POST[self::META_SCHEDULE])):'';
 		$out=array();
 		foreach(array_slice(preg_split('/\r\n|\r|\n/',$raw),0,50) as $line){
@@ -136,7 +139,30 @@ final class KWB_Booking {
 	public static function rsvp_enabled($id){$v=(string)get_post_meta($id,self::META_RSVP_OVERRIDE,true);if('on'===$v)return true;if('off'===$v)return false;return(bool)KWB_Settings::get('rsvp_enabled',1);}
 	public static function booking_cutoff_minutes($id){return absint(get_post_meta($id,self::META_BOOKING_CUTOFF,true));}
 	public static function max_qty($id){return absint(get_post_meta($id,self::META_MAX_QTY,true));}
-	public static function location($id){$v=trim((string)get_post_meta($id,self::META_LOCATION,true));return$v?:((string)KWB_Settings::get('calendar_location','')?:get_bloginfo('name'));}
+	public static function location($id){
+		$v=trim((string)get_post_meta($id,self::META_LOCATION,true));if($v)return$v;
+		$v=trim((string)KWB_Settings::get('calendar_location',''));if($v)return$v;
+		$parts=array_filter(array(
+			trim((string)get_option('woocommerce_store_address','')),
+			trim((string)get_option('woocommerce_store_address_2','')),
+			trim((string)get_option('woocommerce_store_city','')),
+			trim((string)get_option('woocommerce_store_postcode','')),
+		));
+		$country_setting=(string)get_option('woocommerce_default_country','');$country='';$state='';
+		if($country_setting){$bits=explode(':',$country_setting,2);$country=$bits[0]??'';$state=$bits[1]??'';}
+		if(function_exists('WC')&&WC()->countries){
+			if($state&&!empty(WC()->countries->states[$country][$state]))$parts[]=WC()->countries->states[$country][$state];
+			if($country&&!empty(WC()->countries->countries[$country]))$parts[]=WC()->countries->countries[$country];
+		}
+		return $parts?implode(', ',array_unique($parts)):get_bloginfo('name');
+	}
+	private static function product_calendar_description($id){
+		$custom=trim((string)get_post_meta($id,self::META_CAL_DESCRIPTION,true));if($custom)return$custom;
+		$product=wc_get_product($id);if(!$product)return'';
+		$short=html_entity_decode(wp_strip_all_tags((string)$product->get_short_description()),ENT_QUOTES,get_bloginfo('charset'));
+		$short=preg_replace('/\s+/u',' ',trim($short));
+		return (string)$short;
+	}
 
 	public static function purchasable($purchasable,$product){
 		if(!$product instanceof WC_Product)return$purchasable;
@@ -193,9 +219,11 @@ final class KWB_Booking {
 		<input type="hidden" name="kwb_occurrence" id="kwb_occurrence" value="">
 		<div class="kwb-calendar-nav"><button type="button" class="kwb-prev" aria-label="Προηγούμενος μήνας">‹</button><span class="kwb-current-month"></span><button type="button" class="kwb-next" aria-label="Επόμενος μήνας">›</button></div>
 		<div class="kwb-calendar-grid"></div>
-		<div class="kwb-calendar-help">Οι γκρι ημέρες δεν έχουν εργαστήριο. Στις διαθέσιμες ημέρες φαίνονται οι θέσεις που απομένουν.</div>
-		<div class="kwb-month-select-wrap"><button type="button" class="button kwb-select-month">Επιλογή αυτού του μήνα</button></div>
-		<div class="kwb-selection-summary" aria-live="polite"></div>
+		<div class="kwb-calendar-help">Οι γκρι ημέρες δεν έχουν εργαστήριο. Στις διαθέσιμες ημέρες βλέπετε πάντα την ώρα και τις θέσεις που απομένουν.</div>
+		<div class="kwb-month-action">
+			<div class="kwb-month-select-wrap"><button type="button" class="button kwb-select-month">Επιλογή αυτού του μήνα</button></div>
+			<div class="kwb-selection-summary" aria-live="polite"></div>
+		</div>
 		<small>Η ποσότητα αντιστοιχεί στον αριθμό παιδιών.</small>
 		</div>
 		<?php
@@ -232,6 +260,17 @@ final class KWB_Booking {
 			'{{order_number}}'=>$order->get_order_number(),
 		));
 	}
+	private static function calendar_description($item,$o,$order,$product_id){
+		$parts=array();
+		$about=self::product_calendar_description($product_id);if($about)$parts[]=$about;
+		$base=self::calendar_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$item,$o,$order);if($base)$parts[]=$base;
+		$type=(string)$item->get_meta('_kwb_booking_type',true);
+		$parts[]='Τύπος συμμετοχής: '.('monthly'===$type?'Μηνιαία':'Μεμονωμένη');
+		$parts[]='Ημερομηνία: '.wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone());
+		$parts[]='Ώρα: '.$o['start'].'–'.$o['end'];
+		$product_url=get_permalink($product_id);if($product_url)$parts[]='Πληροφορίες εργαστηρίου: '.$product_url;
+		return implode("\n\n",array_filter($parts));
+	}
 	public static function email_links($order,$admin,$plain,$email){if($admin||!$order instanceof WC_Order||in_array($order->get_status(),array('failed','cancelled','refunded'),true))return;self::calendar_links($order,$plain);}
 	public static function order_links($order){if($order instanceof WC_Order)self::calendar_links($order,false);}
 	private static function calendar_links($order,$plain=false){
@@ -253,7 +292,7 @@ final class KWB_Booking {
 	private static function google($item,$o,$order,$product_id){
 		$utc=new DateTimeZone('UTC');
 		$title=self::calendar_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$item,$o,$order);
-		$details=self::calendar_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$item,$o,$order);
+		$details=self::calendar_description($item,$o,$order,$product_id);
 		return add_query_arg(array(
 			'action'=>'TEMPLATE',
 			'text'=>$title,
@@ -266,7 +305,7 @@ final class KWB_Booking {
 	private static function sig($oid,$iid){$order=wc_get_order(absint($oid));$item=$order?$order->get_item(absint($iid)):false;$ctx=absint($oid).'|'.absint($iid);if($order&&$item)$ctx.='|'.$order->get_order_key().'|'.hash('sha256',(string)$item->get_meta('_kwb_occurrences',true));return hash_hmac('sha256',$ctx,wp_salt('auth'));}
 	private static function ics_url($oid,$iid){return add_query_arg(array('kwb_ics'=>1,'order_id'=>absint($oid),'item_id'=>absint($iid),'sig'=>self::sig($oid,$iid)),home_url('/'));}
 	public static function ics_download(){// phpcs:disable WordPress.Security.NonceVerification.Recommended -- HMAC-authenticated read-only endpoint.
-		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Workshop Bookings for WooCommerce//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc(self::calendar_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$item,$o,$order));$ics[]='DESCRIPTION:'.self::esc(self::calendar_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$item,$o,$order));$ics[]='LOCATION:'.self::esc(self::location($pid));$alarm=absint(KWB_Settings::get('calendar_alarm_minutes',240));if($alarm>0){$ics[]='BEGIN:VALARM';$ics[]='TRIGGER:-PT'.$alarm.'M';$ics[]='ACTION:DISPLAY';$ics[]='DESCRIPTION:'.self::esc('Υπενθύμιση εργαστηρίου');$ics[]='END:VALARM';}$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="workshop-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Workshop Bookings for WooCommerce//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc(self::calendar_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$item,$o,$order));$ics[]='DESCRIPTION:'.self::esc(self::calendar_description($item,$o,$order,$pid));$ics[]='LOCATION:'.self::esc(self::location($pid));$alarm=absint(KWB_Settings::get('calendar_alarm_minutes',240));if($alarm>0){$ics[]='BEGIN:VALARM';$ics[]='TRIGGER:-PT'.$alarm.'M';$ics[]='ACTION:DISPLAY';$ics[]='DESCRIPTION:'.self::esc('Υπενθύμιση εργαστηρίου');$ics[]='END:VALARM';}$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="workshop-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo implode("\r\n",$ics)."\r\n";// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;}
 	private static function esc($v){return str_replace(array('\\',';',',',"\r\n","\r","\n"),array('\\\\','\\;','\\,','\\n','\\n','\\n'),(string)$v);}
