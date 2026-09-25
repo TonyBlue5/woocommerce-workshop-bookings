@@ -1,4 +1,4 @@
-=== Kangiroo Workshop Bookings for WooCommerce ===
+=== Workshop Bookings for WooCommerce by e-iT ===
 Contributors: TonyBlue5
 Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
@@ -12,7 +12,7 @@ Lightweight workshop booking slots for WooCommerce products with capacity contro
 
 == Description ==
 
-Kangiroo Workshop Bookings keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
+Workshop Bookings for WooCommerce keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
 
 Current features:
 * Monthly participation that reserves every scheduled session in a selected month.
