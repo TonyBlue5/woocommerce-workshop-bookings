@@ -3,7 +3,7 @@
  * Plugin Name: Kangiroo Workshop Bookings for WooCommerce
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  * Description: WooCommerce workshop bookings with single-session and monthly recurring participation, shared capacity and calendar exports.
- * Version: 0.3.1
+ * Version: 0.4.0
  * Author: e-iT
  * Requires Plugins: woocommerce
  * Requires at least: 6.4
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KWB_VERSION', '0.3.1' );
+define( 'KWB_VERSION', '0.4.0' );
 define( 'KWB_PLUGIN_FILE', __FILE__ );
 define( 'KWB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -37,6 +37,7 @@ add_action(
 );
 
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rsvp.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-updater.php';
 
 KWB_GitHub_Updater::init();
@@ -60,5 +61,6 @@ add_action(
 		}
 
 		KWB_Booking::init();
+		KWB_RSVP::init();
 	}
 );
