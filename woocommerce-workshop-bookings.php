@@ -55,7 +55,7 @@ add_action(
 						return;
 					}
 					echo '<div class="notice notice-error"><p><strong>Workshop Bookings for WooCommerce:</strong> ';
-					esc_html_e( 'Απαιτείται ενεργό WooCommerce.', 'woocommerce-workshop-bookings' );
+					echo esc_html( KWB_I18n::t( 'requires_woocommerce' ) );
 					echo '</p></div>';
 				}
 			);
