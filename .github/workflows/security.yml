@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, settings-google-wizard-v0.5.0]
+    branches: [main, api-free-commercial-v0.6.0]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
