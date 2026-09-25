@@ -54,6 +54,7 @@ final class KWB_Booking {
 			'available_place'=>KWB_I18n::t('available_place'),'available_places'=>KWB_I18n::t('available_places'),'choose'=>KWB_I18n::t('choose'),
 			'unavailable_month'=>KWB_I18n::t('unavailable_month'),'selected_date'=>KWB_I18n::t('selected_date'),'place'=>KWB_I18n::t('place'),'places'=>KWB_I18n::t('places'),
 			'previous_month'=>KWB_I18n::t('previous_month'),'next_month'=>KWB_I18n::t('next_month'),'greek'=>KWB_I18n::is_greek(),
+			'selected_month'=>KWB_I18n::t('selected_month'),
 		));
 		wp_enqueue_style('kwb-calendar',plugins_url('../assets/kwb-calendar.css',__FILE__),array(),KWB_VERSION);
 	}
