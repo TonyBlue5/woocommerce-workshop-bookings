@@ -12,7 +12,7 @@
       [['time','kwb-start','09:00'],['time','kwb-end','10:00'],['number','kwb-capacity','10']].forEach(a=>{const i=document.createElement('input');i.type=a[0];i.className=a[1];i.value=a[2];if(a[0]==='number'){i.min=1;i.max=10000;i.placeholder=i18n.capacity||'Seats';}r.appendChild(i);});
       const b=document.createElement('button');b.type='button';b.className='button-link-delete kwb-remove-row';b.textContent=i18n.remove||'Remove';r.appendChild(b);return r;
     }
-    function blackoutRow(){const r=document.createElement('div');r.className='kwb-blackout-row';const i=document.createElement('input');i.type='date';i.className='kwb-blackout-date';r.appendChild(i);const b=document.createElement('button');b.type='button';b.className='button-link-delete kwb-remove-row';b.textContent='Αφαίρεση';r.appendChild(b);return r;}
+    function blackoutRow(){const r=document.createElement('div');r.className='kwb-blackout-row';const i=document.createElement('input');i.type='date';i.className='kwb-blackout-date';r.appendChild(i);const b=document.createElement('button');b.type='button';b.className='button-link-delete kwb-remove-row';b.textContent=i18n.remove||'Remove';r.appendChild(b);return r;}
     function sync(){
       const lines=[];sched.querySelectorAll('.kwb-schedule-row').forEach(r=>{const d=r.querySelector('.kwb-day').value,s=r.querySelector('.kwb-start').value,e=r.querySelector('.kwb-end').value,c=r.querySelector('.kwb-capacity').value;if(d&&s&&e&&c)lines.push([d,s,e,c].join('|'));});schedHidden.value=lines.join('\n');
       const dates=[];black.querySelectorAll('.kwb-blackout-date').forEach(i=>{if(i.value)dates.push(i.value);});blackHidden.value=dates.join('\n');
