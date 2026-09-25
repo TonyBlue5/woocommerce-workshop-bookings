@@ -83,3 +83,12 @@ For each booked occurrence it can generate a normal **Add to Google Calendar** l
 Attendance confirmation is handled by the plugin itself: a configurable reminder email is scheduled before each occurrence and contains signed **YES / NO** links. When the customer declines, that specific occurrence can release its capacity for another booking without cancelling the rest of a monthly booking.
 
 The reminder lead time, email subject/body, RSVP labels, cutoff, Google Calendar button, .ics button, .ics alarm, calendar title/description/location and booking defaults are configurable in WooCommerce > Workshop Bookings. Per-workshop overrides are also available for reminder timing, RSVP, cutoff, maximum quantity and location.
+
+
+## v0.6.1 UI and calendar metadata
+
+The visual availability calendar uses a plugin-owned Roboto-first font stack and explicitly overrides theme button colors so available dates remain readable without hover. Available cells display the workshop time and remaining capacity at all times.
+
+Monthly booking selection uses a simpler month button and a confirmation message that states how many workshop participations are included **per child**.
+
+Customer order details and emails now explain how to add bookings to Google Calendar or Apple / Outlook / iCalendar. Calendar events include workshop title, booking date/time, booking mode, order context, product link, and a richer description. A per-product calendar description can be entered in the Workshop Booking panel; when empty, the WooCommerce short description is used. Location falls back from product override to the global Workshop Bookings setting and finally to the WooCommerce store address.
