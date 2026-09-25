@@ -5,7 +5,7 @@
 - Active workshop dates always show date, time and remaining capacity without relying on hover styles.
 - Monthly selection button no longer includes the remaining-seat count.
 - Monthly selection summary now explains the total number of participations per child.
-- Improved customer calendar section in order details and emails with clear instructions and cleaner Google / Apple / Outlook buttons.
+- Improved customer calendar section in order details and emails with clear instructions and cleaner Google / Apple / Outlook buttons, without confusing “all dates” wording.
 - Added per-workshop calendar description override with fallback to the WooCommerce product short description.
 - Calendar exports now automatically enrich descriptions with booking type, date, time, order context and product link.
 - Calendar location now falls back from workshop override to global plugin location and then to the WooCommerce store address.

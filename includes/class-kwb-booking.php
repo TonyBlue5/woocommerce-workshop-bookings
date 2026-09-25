@@ -285,7 +285,7 @@ final class KWB_Booking {
 					if($count>1)echo "Για Google Calendar, ανοίξτε κάθε ημερομηνία ξεχωριστά:\n";
 					foreach($os as$o)echo 'Google Calendar — '.wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'].'–'.$o['end'].': '.esc_url_raw(self::google($item,$o,$order,$pid))."\n";
 				}
-				if($ics)echo 'Apple / Outlook / iCalendar'.($count>1?' — το αρχείο περιλαμβάνει όλες τις ημερομηνίες':'').': '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
+				if($ics)echo 'Apple / Outlook / iCalendar: '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
 				continue;
 			}
 
@@ -302,7 +302,7 @@ final class KWB_Booking {
 				}
 			}
 			if($ics){
-				$ics_label=$count>1?'Apple / Outlook / iCalendar — προσθήκη όλων των ημερομηνιών':'Apple / Outlook / iCalendar — προσθήκη στο ημερολόγιο';
+				$ics_label='Apple / Outlook / iCalendar — προσθήκη στο ημερολόγιο';
 				echo '<a href="'.esc_url(self::ics_url($order->get_id(),$iid)).'" style="'.esc_attr($button.';background:#202a33;color:#fff;border:1px solid #202a33').'">📆 '.esc_html($ics_label).'</a>';
 			}
 			echo '</div>';
