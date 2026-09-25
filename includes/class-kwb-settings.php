@@ -81,6 +81,7 @@ final class KWB_Settings {
 			'connected'=>array('success','Ο Google λογαριασμός συνδέθηκε. Επιλέξτε ημερολόγιο και αποθηκεύστε τις ρυθμίσεις.'),
 			'disconnected'=>array('warning','Ο Google λογαριασμός αποσυνδέθηκε.'),
 			'test_ok'=>array('success','Η σύνδεση δοκιμάστηκε επιτυχώς: δημιουργήθηκε και διαγράφηκε προσωρινό test event.'),
+			'sync_ok'=>array('success','Ο χειροκίνητος συγχρονισμός Google Calendar ολοκληρώθηκε.'),
 		);
 		if(isset($messages[$key])){$m=$messages[$key];echo '<div class="notice notice-'.esc_attr($m[0]).' is-dismissible"><p>'.esc_html($m[1]).'</p></div>';return;}
 		if('error'===$key){$errors=array(
@@ -105,6 +106,7 @@ final class KWB_Settings {
 		$connect_url=wp_nonce_url(admin_url('admin-post.php?action=kwb_google_connect'),'kwb_google_connect');
 		$disconnect_url=wp_nonce_url(admin_url('admin-post.php?action=kwb_google_disconnect'),'kwb_google_disconnect');
 		$test_url=wp_nonce_url(admin_url('admin-post.php?action=kwb_google_test'),'kwb_google_test');
+		$sync_url=wp_nonce_url(admin_url('admin-post.php?action=kwb_google_sync_now'),'kwb_google_sync_now');
 		?>
 	<div class="wrap"><h1>Workshop Bookings — Ρυθμίσεις</h1><form method="post" action="options.php"><?php settings_fields('kwb_settings_group');?>
 	<h2>Υπενθυμίσεις & RSVP</h2><table class="form-table"><tbody>
@@ -113,7 +115,7 @@ final class KWB_Settings {
 	<tr><th>RSVP</th><td><?php self::checkbox('rsvp_enabled','Να ζητά ΝΑΙ / ΟΧΙ από τον πελάτη');?><br><?php self::checkbox('release_on_no','Με ΟΧΙ να ελευθερώνεται αμέσως η θέση');?><br><?php self::number('rsvp_cutoff_minutes','Τελευταία αλλαγή απάντησης','0','1440','λεπτά πριν την έναρξη');?></td></tr>
 	</tbody></table>
 	<h2>Ημερολόγια</h2><table class="form-table"><tbody>
-	<tr><th>Calendar reminder</th><td><?php self::number('calendar_alarm_minutes','Υπενθύμιση μέσα στο calendar','0','10080','λεπτά πριν');?><p class="description">0 = χωρίς calendar alarm.</p></td></tr>
+	<tr><th>Calendar reminder</th><td><?php self::number('calendar_alarm_minutes','Υπενθύμιση στο organizer calendar','0','10080','λεπτά πριν');?><p class="description">0 = χωρίς calendar alarm. Οι υπενθυμίσεις των προσκεκλημένων ελέγχονται από τις προσωπικές ρυθμίσεις Google Calendar τους· το plugin χρησιμοποιεί το δικό του email reminder για εγγυημένη υπενθύμιση.</p></td></tr>
 	<tr><th>Τίτλος event</th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_title_template]');?>" value="<?php echo esc_attr($s['calendar_title_template']);?>"><p class="description">Placeholders: {{workshop}}, {{date}}, {{time}}, {{order_number}}</p></td></tr>
 	<tr><th>Περιγραφή event</th><td><textarea class="large-text" rows="3" name="<?php echo esc_attr(self::OPTION.'[calendar_description_template]');?>"><?php echo esc_textarea($s['calendar_description_template']);?></textarea></td></tr>
 	<tr><th>Τοποθεσία</th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_location]');?>" value="<?php echo esc_attr($s['calendar_location']);?>" placeholder="<?php echo esc_attr(get_bloginfo('name'));?>"></td></tr>
@@ -140,7 +142,7 @@ final class KWB_Settings {
 		<p><strong>Βήμα 3 — Σύνδεση</strong></p>
 		<?php if($connected):?>
 		<p><span style="display:inline-block;background:#edfaef;color:#176b2c;border:1px solid #8ccf9a;border-radius:20px;padding:5px 10px;font-weight:600">● Google Connected</span></p>
-		<p><a class="button button-secondary" href="<?php echo esc_url($test_url);?>">Δοκιμή σύνδεσης</a> <a class="button" href="<?php echo esc_url($disconnect_url);?>" onclick="return confirm('Αποσύνδεση Google Calendar;')">Αποσύνδεση</a></p>
+		<p><a class="button button-secondary" href="<?php echo esc_url($test_url);?>">Δοκιμή σύνδεσης</a> <a class="button button-secondary" href="<?php echo esc_url($sync_url);?>">Συγχρονισμός τώρα</a> <a class="button" href="<?php echo esc_url($disconnect_url);?>" onclick="return confirm('Αποσύνδεση Google Calendar;')">Αποσύνδεση</a></p>
 		<?php else:?>
 		<p><a class="button button-primary" href="<?php echo esc_url($connect_url);?>">Σύνδεση με Google Calendar</a></p>
 		<?php endif;?>
