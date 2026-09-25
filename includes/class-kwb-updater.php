@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class KWB_GitHub_Updater {
-	const VERSION='0.4.0';
+	const VERSION='0.5.0';
 	const API='https://api.github.com/repos/TonyBlue5/woocommerce-workshop-bookings/releases/latest';
 	const SLUG='kangiroo-workshop-bookings';
 	const PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0r9E6m6osaldFxI1ALSi\nTaUaT5q0WtaA1tyjKwdNAyvkZKuZ2gppLEW8184AX+qg5BYp7YX/65nx1gYdHord\nXHv1YD+al4A6AcTZB6OV7omma/m0XauuyJWIW3jNyGyYkBDEdX3sfAlLG18VCBnv\n2FQQa4OcjXYSh03neJUHofXTL7N2G9YHqAr3BQdY3xTKAB5f/KdSGsAgNjJ+h9Sk\n7zB7E2LhcMBfKCnbkydbHmApoaiYq75OVizCFfbWkO3L0PuUpknLv8mo30Lw1y5a\noAUMbBjKmSri1L6Kwi7gq00ahJQ1cgLQhysXb5j9l7rgYu2jwnRneJ7K0qA3cgZc\ntLOQ8Bs2J/4pMuTpxIoqyHDS/GX/7+HPP86tNHCzEU2ckYSXkwzU7pyxgAFYO0Ul\nbQxBlBX74CqUWhDamRM+SbtPE3f0ZD+UJHwJhCbsSB9d4++QOL9ZVAcadpoCSGsO\nhRUTbOk+nue0VOihhqMw3u2vxn73qVhhesLz9BlqSheg/pWNk1wN6EBZWheC/xGR\n9J1r1aD5HgCIhR52RTbExZ4ANMZO2ZAFfGh8RynZiEx311mH2X0UPBxpdm8mqDsS\nC933cyvkeKiiqmnTMU9QF1HX07A+xyh3eGJiQNGmXL3GRrPS6O52tfla9wj0y77d\n6uBSKpmDU/gAfp1MiX3mz6cCAwEAAQ==\n-----END PUBLIC KEY-----";
