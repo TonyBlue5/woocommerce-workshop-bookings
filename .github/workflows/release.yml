@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag, e.g. v0.5.0'
+        description: 'Version tag, e.g. v0.6.0'
         required: true
         type: string
 
@@ -33,15 +33,12 @@ jobs:
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
-          php -l includes/class-kwb-google-calendar.php
       - name: Security preflight
         run: |
           set -euo pipefail
           if grep -REn --include='*.php' -E '(eval|shell_exec|system|passthru|proc_open|popen|pcntl_exec)[[:space:]]*[(]' .; then exit 1; fi
           grep -F "openssl_verify" includes/class-kwb-updater.php
           grep -F "const PUBLIC_KEY" includes/class-kwb-updater.php
-          grep -F "aes-256-gcm" includes/class-kwb-google-calendar.php
-          grep -F "hash_equals((string)\$expected,hash('sha256',\$state))" includes/class-kwb-google-calendar.php
           test -s release-public.pem
       - name: Require signing key
         env:

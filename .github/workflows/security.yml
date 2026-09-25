@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, settings-google-wizard-v0.5.0]
+    branches: [main, api-free-commercial-v0.6.0]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
@@ -26,7 +26,6 @@ jobs:
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
-          php -l includes/class-kwb-google-calendar.php
       - name: Reject high-risk PHP execution primitives
         run: |
           set -euo pipefail
@@ -34,6 +33,14 @@ jobs:
             echo "High-risk PHP primitive found."
             exit 1
           fi
+      - name: Verify API-free calendar architecture
+        run: |
+          set -euo pipefail
+          if grep -REn --exclude-dir=.git -E 'oauth2\.googleapis\.com|www\.googleapis\.com/calendar/v3|accounts\.google\.com/o/oauth2' .; then
+            echo "Google OAuth/Calendar API dependency found in API-free build."
+            exit 1
+          fi
+
       - name: Verify security invariants
         run: |
           set -euo pipefail
@@ -45,9 +52,6 @@ jobs:
           grep -F "const PUBLIC_KEY" includes/class-kwb-updater.php
           grep -F "hash_hmac('sha256'" includes/class-kwb-rsvp.php
           grep -F "wp_schedule_single_event" includes/class-kwb-rsvp.php
-          grep -F "hash_equals((string)\$expected,hash('sha256',\$state))" includes/class-kwb-google-calendar.php
-          grep -F "aes-256-gcm" includes/class-kwb-google-calendar.php
-          grep -F "check_admin_referer" includes/class-kwb-google-calendar.php
           test -s release-public.pem
 
   runtime-security:

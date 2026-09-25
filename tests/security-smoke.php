@@ -44,13 +44,25 @@ kwb_assert($before===get_post_meta($id,'_kwb_weekly_schedule',true),'admin save 
 kwb_assert(class_exists('KWB_GitHub_Updater'),'secure updater missing');
 kwb_assert(class_exists('KWB_RSVP'),'RSVP engine missing');
 kwb_assert(class_exists('KWB_Settings'),'settings engine missing');
-kwb_assert(class_exists('KWB_Google_Calendar'),'Google Calendar engine missing');
-kwb_assert(false!==strpos(KWB_Google_Calendar::redirect_uri(),'admin-post.php?action=kwb_google_callback'),'Google OAuth redirect URI is invalid');
-kwb_assert(KWB_Google_Calendar::store_client_secret('dummy-ci-secret'),'Google client secret encryption failed');
-kwb_assert('dummy-ci-secret'===KWB_Google_Calendar::client_secret(),'Google client secret decryption failed');
-$stored_secret=(string)get_option('kwb_google_client_secret','');
-kwb_assert('dummy-ci-secret'!==$stored_secret && false===strpos($stored_secret,'dummy-ci-secret'),'Google client secret stored in plaintext');
-delete_option('kwb_google_client_secret');
+kwb_assert(!class_exists('KWB_Google_Calendar'),'API-free build unexpectedly loaded Google OAuth class');
+$sanitized=KWB_Settings::sanitize(array(
+    'reminder_enabled'=>1,
+    'email_reminder_enabled'=>1,
+    'rsvp_enabled'=>1,
+    'release_on_no'=>1,
+    'calendar_google_link_enabled'=>1,
+    'calendar_ics_enabled'=>1,
+    'reminder_lead_minutes'=>180,
+    'rsvp_cutoff_minutes'=>15,
+    'calendar_alarm_minutes'=>120,
+    'default_horizon_months'=>4,
+    'default_capacity'=>12,
+    'reminder_subject_template'=>'Reminder {{workshop}}',
+    'reminder_message_template'=>'See you {{date}} {{time}}',
+));
+kwb_assert(180===$sanitized['reminder_lead_minutes'],'configurable reminder lead time failed');
+kwb_assert(1===$sanitized['calendar_google_link_enabled'],'API-free Google calendar link setting failed');
+kwb_assert(1===$sanitized['calendar_ics_enabled'],'iCalendar setting failed');
 
 // A declined occurrence must immediately free its seat.
 $item = $order->get_item($item_id);

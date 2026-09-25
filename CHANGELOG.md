@@ -1,17 +1,16 @@
 # Changelog
 
-## 0.5.0
-- Generic commercial branding: Workshop Bookings for WooCommerce by e-iT.
-- Global settings for reminders, RSVP, booking defaults and Google Calendar behavior.
-- Per-workshop overrides for reminder timing, RSVP, booking cutoff, maximum quantity and location.
-- Google Calendar OAuth 2.0 connection wizard with exact redirect URI display.
-- Encrypted at-rest storage for Google Client Secret and OAuth tokens using AES-256-GCM derived from WordPress salts.
-- Calendar selection, write-access connection test and manual backfill/sync.
-- Automatic Google event creation for paid bookings with attendees and invitation notifications.
-- Configurable RSVP polling sync; Google declined responses can release occurrence capacity.
-- Automatic cleanup of Google events on cancelled, refunded or failed orders.
-- Diagnostics status and configurable sync interval.
-- Security and compatibility regression coverage for OAuth state validation and encrypted credential storage.
+## 0.6.0
+- Commercial API-free architecture: no Google Cloud project, OAuth client, Client ID, Client Secret or Calendar API is required.
+- Direct “Add to Google Calendar” links are generated locally for each booked occurrence.
+- Apple / Outlook / iCalendar downloads remain available through signed multi-event .ics files.
+- Configurable email reminders and signed YES / NO RSVP links work entirely on the WordPress site.
+- RSVP decline can immediately release only that occurrence's capacity for another booking.
+- Re-confirming after a released seat now checks capacity first to prevent reclaiming a seat already taken by another customer.
+- Reminder subject, reminder body and RSVP button labels are configurable with placeholders.
+- Calendar title, description, location, Google-link visibility, .ics visibility and .ics reminder timing are configurable.
+- Removed Google OAuth/API code and cleans up legacy development OAuth tokens/secrets during migration.
+- Retains per-workshop overrides for reminder timing, RSVP, booking cutoff, maximum quantity and location.
 
 
 ## 0.4.0

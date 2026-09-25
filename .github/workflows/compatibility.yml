@@ -2,7 +2,7 @@ name: WordPress + WooCommerce compatibility
 
 on:
   push:
-    branches: [main, settings-google-wizard-v0.5.0]
+    branches: [main, api-free-commercial-v0.6.0]
   pull_request:
   schedule:
     - cron: '37 4 * * *'
@@ -41,7 +41,6 @@ jobs:
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
-          php -l includes/class-kwb-google-calendar.php
       - name: Install latest WordPress and WooCommerce
         run: |
           set -euo pipefail
@@ -63,5 +62,4 @@ jobs:
           wp eval "echo class_exists('KWB_GitHub_Updater') ? 'updater-loaded' : 'missing';" --path=/tmp/kwb-test | grep updater-loaded
           wp eval "echo class_exists('KWB_RSVP') ? 'rsvp-loaded' : 'missing';" --path=/tmp/kwb-test | grep rsvp-loaded
           wp eval "echo class_exists('KWB_Settings') ? 'settings-loaded' : 'missing';" --path=/tmp/kwb-test | grep settings-loaded
-          wp eval "echo class_exists('KWB_Google_Calendar') ? 'google-loaded' : 'missing';" --path=/tmp/kwb-test | grep google-loaded
           wp eval "echo defined('WC_VERSION') ? WC_VERSION : 'missing';" --path=/tmp/kwb-test
