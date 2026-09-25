@@ -27,7 +27,7 @@
 - Multi-event iCalendar export and per-occurrence Google Calendar links.
 - Expanded security and WooCommerce compatibility tests.
 
-All notable changes to Kangiroo Workshop Bookings are documented here.
+All notable changes to Workshop Bookings for WooCommerce are documented here.
 
 ## [0.1.0] - 2026-09-24
 
