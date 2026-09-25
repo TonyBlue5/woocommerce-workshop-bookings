@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2
+- Fixed delayed update detection caused by a 12-hour custom GitHub release cache.
+- GitHub release metadata now refreshes every 10 minutes when no newer version is cached.
+- WordPress Dashboard > Updates > Check again now clears the plugin's custom update cache.
+- Older cached release metadata without a fetch timestamp is automatically treated as stale.
+
+
 ## 0.6.1
 - Refined storefront booking calendar typography and spacing with a Roboto-first font stack.
 - Active workshop dates always show date, time and remaining capacity without relying on hover styles.
