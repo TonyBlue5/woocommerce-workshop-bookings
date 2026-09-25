@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Workshop Bookings for WooCommerce by e-iT
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
- * Description: WooCommerce workshop bookings with single-session and monthly recurring participation, shared capacity and calendar exports.
+ * Description: API-free WooCommerce workshop bookings with visual availability, monthly or single participation, reminders, RSVP, shared capacity and calendar exports.
  * Version: 0.6.0
  * Author: e-iT
  * Requires Plugins: woocommerce
