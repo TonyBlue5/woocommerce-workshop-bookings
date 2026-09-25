@@ -32,6 +32,17 @@ final class KWB_Settings {
 	public static function init(){
 		add_action('admin_menu',array(__CLASS__,'menu'));
 		add_action('admin_init',array(__CLASS__,'register'));
+		add_action('admin_init',array(__CLASS__,'cleanup_legacy_google_oauth'));
+	}
+
+	public static function cleanup_legacy_google_oauth(){
+		if(get_option('kwb_api_free_migration_done'))return;
+		delete_option('kwb_google_tokens');
+		delete_option('kwb_google_client_secret');
+		delete_option('kwb_google_event_registry');
+		delete_option('kwb_google_status');
+		wp_clear_scheduled_hook('kwb_google_rsvp_sync');
+		update_option('kwb_api_free_migration_done',1,false);
 	}
 
 	public static function menu(){
