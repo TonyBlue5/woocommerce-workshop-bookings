@@ -33,6 +33,14 @@ jobs:
             echo "High-risk PHP primitive found."
             exit 1
           fi
+      - name: Verify API-free calendar architecture
+        run: |
+          set -euo pipefail
+          if grep -REn --exclude-dir=.git -E 'oauth2\.googleapis\.com|www\.googleapis\.com/calendar/v3|accounts\.google\.com/o/oauth2' .; then
+            echo "Google OAuth/Calendar API dependency found in API-free build."
+            exit 1
+          fi
+
       - name: Verify security invariants
         run: |
           set -euo pipefail
