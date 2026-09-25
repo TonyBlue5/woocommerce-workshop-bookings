@@ -3,7 +3,7 @@
  * Plugin Name: Workshop Bookings for WooCommerce by e-iT
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  * Description: API-free WooCommerce workshop bookings with visual availability, monthly or single participation, reminders, RSVP, shared capacity and calendar exports.
- * Version: 0.6.2
+ * Version: 0.6.3
  * Author: e-iT
  * Requires Plugins: woocommerce
  * Requires at least: 6.4
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KWB_VERSION', '0.6.2' );
+define( 'KWB_VERSION', '0.6.3' );
 define( 'KWB_PLUGIN_FILE', __FILE__ );
 define( 'KWB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -36,6 +36,7 @@ add_action(
 	}
 );
 
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-i18n.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-settings.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rsvp.php';
@@ -54,7 +55,7 @@ add_action(
 						return;
 					}
 					echo '<div class="notice notice-error"><p><strong>Workshop Bookings for WooCommerce:</strong> ';
-					esc_html_e( 'Απαιτείται ενεργό WooCommerce.', 'woocommerce-workshop-bookings' );
+					echo esc_html( KWB_I18n::t( 'requires_woocommerce' ) );
 					echo '</p></div>';
 				}
 			);

@@ -92,3 +92,12 @@ The visual availability calendar uses a plugin-owned Roboto-first font stack and
 Monthly booking selection uses a simpler month button and a confirmation message that states how many workshop participations are included **per child**.
 
 Customer order details and emails now explain how to add bookings to Google Calendar or Apple / Outlook / iCalendar. Calendar events include workshop title, booking date/time, booking mode, order context, product link, and a richer description. A per-product calendar description can be entered in the Workshop Booking panel; when empty, the WooCommerce short description is used. Location falls back from product override to the global Workshop Bookings setting and finally to the WooCommerce store address.
+
+
+## v0.6.3 bilingual UI and monthly-only workshops
+
+Monthly-only products now still populate the visual calendar with their real weekly occurrences, times and remaining capacity even when single-session purchases are disabled.
+
+The commercial UI is bilingual. English is the default, while WordPress installations using an `el_*` locale automatically receive the Greek interface. This covers the product booking panel, storefront calendar, cart/order booking metadata, customer calendar instructions, reminder/RSVP copy and the admin schedule editor.
+
+Quantity terminology is neutral: the plugin uses “participants/participations” instead of assuming every booking is for children.

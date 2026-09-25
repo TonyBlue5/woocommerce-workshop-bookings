@@ -70,9 +70,9 @@ final class KWB_RSVP {
 		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
-		$subject=self::render_template(KWB_Settings::get('reminder_subject_template','Υπενθύμιση: {{workshop}} — {{date}} στις {{time}}'),$order,$item,$occ);
-		$copy=self::render_template(KWB_Settings::get('reminder_message_template','Υπενθύμιση για το εργαστήριο {{workshop}} στις {{date}} {{time}}. Θα μπορέσετε τελικά να έρθετε;'),$order,$item,$occ);
-		$yes_label=(string)KWB_Settings::get('rsvp_yes_label','ΝΑΙ, θα έρθουμε');$no_label=(string)KWB_Settings::get('rsvp_no_label','ΟΧΙ, δεν θα έρθουμε');
+		$subject=self::render_template(KWB_Settings::get('reminder_subject_template',KWB_I18n::t('reminder_subject_default')),$order,$item,$occ);
+		$copy=self::render_template(KWB_Settings::get('reminder_message_template',KWB_I18n::t('reminder_message_default')),$order,$item,$occ);
+		$yes_label=(string)KWB_Settings::get('rsvp_yes_label',KWB_I18n::t('yes_default'));$no_label=(string)KWB_Settings::get('rsvp_no_label',KWB_I18n::t('no_default'));
 		$message='<p>'.nl2br(esc_html($copy)).'</p>';
 		$message.='<p><a href="'.esc_url($yes).'" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#fff;text-decoration:none;border-radius:4px">'.esc_html($yes_label).'</a> ';
 		$message.='<a href="'.esc_url($no).'" style="display:inline-block;padding:10px 18px;background:#b32d2e;color:#fff;text-decoration:none;border-radius:4px">'.esc_html($no_label).'</a></p>';
@@ -95,12 +95,12 @@ final class KWB_RSVP {
 		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
 		if(!KWB_Booking::rsvp_enabled($pid)){status_header(403);exit;}
 		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
-		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo 'Η προθεσμία αλλαγής απάντησης έχει λήξει.';exit;}
+		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo esc_html(KWB_I18n::t('rsvp_cutoff_passed'));exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$was_declined=in_array((string)$occ,array_map('strval',$no),true);
 		if('yes'===$answer&&$was_declined&&KWB_Settings::get('release_on_no',1)){
 			$qty=max(1,absint($item->get_quantity()));
-			if($qty>KWB_Booking::remaining($pid,$selected)){status_header(409);echo 'Η θέση έχει ήδη καλυφθεί από άλλη κράτηση. Επικοινωνήστε με τον διοργανωτή.';exit;}
+			if($qty>KWB_Booking::remaining($pid,$selected)){status_header(409);echo esc_html(KWB_I18n::t('seat_taken'));exit;}
 		}
 		$yes=array_values(array_diff(array_map('strval',$yes),array((string)$occ)));$no=array_values(array_diff(array_map('strval',$no),array((string)$occ)));
 		if('yes'===$answer)$yes[]=(string)$occ;else$no[]=(string)$occ;
@@ -109,7 +109,7 @@ final class KWB_RSVP {
 		$item->save();
 		nocache_headers();status_header(200);
 		echo '<!doctype html><html><meta charset="utf-8"><title>Workshop Bookings</title><body style="font-family:Arial,sans-serif;text-align:center;padding:50px">';
-		echo '<h1>'.('yes'===$answer?'Ευχαριστούμε! Σας περιμένουμε.':'Η θέση σας ελευθερώθηκε. Ευχαριστούμε που μας ενημερώσατε.').'</h1>';
+		echo '<h1>'.esc_html('yes'===$answer?KWB_I18n::t('rsvp_yes_thanks'):KWB_I18n::t('rsvp_no_thanks')).'</h1>';
 		echo '</body></html>';// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;
 	}

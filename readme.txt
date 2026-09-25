@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.6.2
+Stable tag: 0.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,3 +88,10 @@ Current features:
 * Fixed delayed GitHub update detection.
 * Update metadata refreshes promptly instead of being held for 12 hours.
 * Dashboard > Updates > Check again clears the plugin update cache.
+
+
+= 0.6.3 =
+* Fixed calendar availability display for monthly-only workshops.
+* Renamed child-specific quantity terminology to neutral participation terminology.
+* Added automatic English / Greek UI based on the WordPress language.
+* Localized booking forms, product settings, calendar UI, reminders, RSVP and customer order metadata.

@@ -1,7 +1,8 @@
 (function(){
   function ready(fn){document.readyState!=='loading'?fn():document.addEventListener('DOMContentLoaded',fn);}
-  const monthsGR=['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
-  const days=['Δε','Τρ','Τε','Πε','Πα','Σα','Κυ'];
+  const i18n=window.KWB_CAL_I18N||{};
+  const months=i18n.months||['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days=i18n.days||['Mo','Tu','We','Th','Fr','Sa','Su'];
 
   ready(function(){
     document.querySelectorAll('.kwb-booking-fields').forEach(init);
@@ -29,7 +30,7 @@
     ])].sort();
 
     if(!keys.length){
-      grid.innerHTML='<p class="kwb-empty">Δεν υπάρχουν διαθέσιμες ημερομηνίες αυτή τη στιγμή.</p>';
+      grid.innerHTML='<p class="kwb-empty">'+(i18n.no_dates||'There are no available dates at the moment.')+'</p>';
       return;
     }
 
@@ -41,14 +42,14 @@
     function mode(){return type?type.value:'monthly';}
     function monthName(key){
       const p=key.split('-'),m=+p[1]-1;
-      return monthsGR[m]+' '+p[0];
+      return months[m]+' '+p[0];
     }
     function formatDate(date){return date.split('-').reverse().join('/');}
 
     function draw(){
       const key=keys[idx],p=key.split('-'),y=+p[0],m=+p[1]-1;
-      title.textContent=monthsGR[m]+' '+y;
-      label.textContent=mode()==='monthly'?'Επιλέξτε μήνα':'Επιλέξτε ημερομηνία';
+      title.textContent=months[m]+' '+y;
+      label.textContent=mode()==='monthly'?(i18n.choose_month||'Choose month'):(i18n.choose_date||'Choose date');
       monthWrap.style.display=mode()==='monthly'?'':'none';
       prev.disabled=idx===0;
       next.disabled=idx===keys.length-1;
@@ -100,10 +101,10 @@
           if(!available.length){
             cell.disabled=true;
             cell.classList.add('is-full');
-            seats.textContent='Πλήρες';
+            seats.textContent=i18n.full||'Full';
           }else{
             const min=Math.min.apply(null,available.map(o=>+o.remaining));
-            seats.textContent=min+' '+(min===1?'διαθέσιμη θέση':'διαθέσιμες θέσεις');
+            seats.textContent=min+' '+(min===1?(i18n.available_place||'available place'):(i18n.available_places||'available places'));
             cell.classList.add('is-available');
             cell.setAttribute('aria-label',formatDate(date)+', '+times.textContent+', '+seats.textContent);
             cell.addEventListener('click',()=>selectDate(date,available,cell));
@@ -116,7 +117,7 @@
       if(mode()==='monthly'){
         const info=data.months&&data.months[key];
         monthBtn.disabled=!info||+info.remaining<1;
-        monthBtn.textContent=info?'Επιλογή '+(info.label||monthName(key)):'Μη διαθέσιμος μήνας';
+        monthBtn.textContent=info?(i18n.choose||'Choose')+' '+(info.label||monthName(key)):(i18n.unavailable_month||'Month unavailable');
       }
     }
 
@@ -136,7 +137,7 @@
 
       if(os.length===1){
         occInput.value=os[0].id;
-        summary.textContent='Επιλέχθηκε η ημερομηνία '+formatDate(date)+', '+os[0].start+'–'+os[0].end+'.';
+        summary.textContent=(i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',os[0].start+'–'+os[0].end);
         return;
       }
 
@@ -145,12 +146,12 @@
       os.forEach(o=>{
         const b=document.createElement('button');
         b.type='button';
-        b.textContent=o.start+'–'+o.end+' — '+o.remaining+' '+(+o.remaining===1?'θέση':'θέσεις');
+        b.textContent=o.start+'–'+o.end+' — '+o.remaining+' '+(+o.remaining===1?(i18n.place||'place'):(i18n.places||'places'));
         b.addEventListener('click',()=>{
           occInput.value=o.id;
           box.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));
           b.classList.add('selected');
-          summary.textContent='Επιλέχθηκε η ημερομηνία '+formatDate(date)+', '+o.start+'–'+o.end+'.';
+          summary.textContent=(i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',o.start+'–'+o.end);
         });
         box.appendChild(b);
       });
@@ -165,7 +166,7 @@
       clearSelected();
       root.querySelectorAll('.kwb-cal-cell.is-available').forEach(x=>x.classList.add('is-month-selected'));
       const label=info.label||monthName(key);
-      summary.textContent='Επιλέχθηκε ο μήνας '+label+' με σύνολο '+info.count+' '+(+info.count===1?'συμμετοχή':'συμμετοχές')+' ανά παιδί.';
+      let template=i18n.selected_month||'Selected {{month}} with a total of {{count}} {{participation_word}} per participant.';const participationWord=+info.count===1?(i18n.participation_count_singular||'participation'):(i18n.participation_count_plural||'participations');summary.textContent=template.replace('{{month}}',label).replace('{{count}}',info.count).replace('{{participation_word}}',participationWord);
     });
 
     if(type)type.addEventListener('change',()=>{

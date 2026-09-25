@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, api-free-commercial-v0.6.0]
+    branches: [main, monthly-only-i18n-v0.6.3]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
@@ -26,6 +26,7 @@ jobs:
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
+          php -l includes/class-kwb-i18n.php
       - name: Reject high-risk PHP execution primitives
         run: |
           set -euo pipefail
