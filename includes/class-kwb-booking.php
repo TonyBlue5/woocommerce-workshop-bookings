@@ -54,13 +54,13 @@ final class KWB_Booking {
 			'available_place'=>KWB_I18n::t('available_place'),'available_places'=>KWB_I18n::t('available_places'),'choose'=>KWB_I18n::t('choose'),
 			'unavailable_month'=>KWB_I18n::t('unavailable_month'),'selected_date'=>KWB_I18n::t('selected_date'),'place'=>KWB_I18n::t('place'),'places'=>KWB_I18n::t('places'),
 			'previous_month'=>KWB_I18n::t('previous_month'),'next_month'=>KWB_I18n::t('next_month'),'greek'=>KWB_I18n::is_greek(),
-			'selected_month'=>KWB_I18n::t('selected_month'),
+			'selected_month'=>KWB_I18n::t('selected_month'),'participation_count_singular'=>KWB_I18n::t('participation_count_singular'),'participation_count_plural'=>KWB_I18n::t('participation_count_plural'),
 		));
 		wp_enqueue_style('kwb-calendar',plugins_url('../assets/kwb-calendar.css',__FILE__),array(),KWB_VERSION);
 	}
 
 	public static function tab($tabs){
-		$tabs['kwb_booking']=array('label'=>__('Workshop Booking','woocommerce-workshop-bookings'),'target'=>'kwb_booking_product_data','class'=>array('show_if_simple','show_if_variable'),'priority'=>80);
+		$tabs['kwb_booking']=array('label'=>KWB_I18n::t('booking_tab'),'target'=>'kwb_booking_product_data','class'=>array('show_if_simple','show_if_variable'),'priority'=>80);
 		return $tabs;
 	}
 
