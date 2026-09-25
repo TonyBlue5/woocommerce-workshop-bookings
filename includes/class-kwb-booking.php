@@ -277,15 +277,34 @@ final class KWB_Booking {
 		$google=(bool)KWB_Settings::get('calendar_google_link_enabled',1);$ics=(bool)KWB_Settings::get('calendar_ics_enabled',1);if(!$google&&!$ics)return;
 		foreach($order->get_items('line_item')as$iid=>$item){
 			$os=self::item_occurrences($item);if(!$os)continue;$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+			$count=count($os);
 			if($plain){
 				echo "\n".esc_html($item->get_name())."\n";
-				if($google)foreach($os as$o)echo 'Google Calendar: '.esc_url_raw(self::google($item,$o,$order,$pid))."\n";
-				if($ics)echo 'Apple / Outlook / iCalendar: '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
+				echo "Προσθέστε την κράτησή σας στο ημερολόγιό σας για να έχετε εύκολα διαθέσιμες την ημερομηνία, την ώρα, την τοποθεσία και τις πληροφορίες του εργαστηρίου.\n";
+				if($google){
+					if($count>1)echo "Για Google Calendar, ανοίξτε κάθε ημερομηνία ξεχωριστά:\n";
+					foreach($os as$o)echo 'Google Calendar — '.wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'].'–'.$o['end'].': '.esc_url_raw(self::google($item,$o,$order,$pid))."\n";
+				}
+				if($ics)echo 'Apple / Outlook / iCalendar'.($count>1?' — όλες οι ημερομηνίες':'').': '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
 				continue;
 			}
-			echo '<div style="margin:16px 0"><strong>'.esc_html($item->get_name()).'</strong><br>';
-			if($google)foreach($os as$o)echo '<a href="'.esc_url(self::google($item,$o,$order,$pid)).'" target="_blank" rel="noopener" style="display:inline-block;margin:6px 6px 0 0;padding:7px 10px;border:1px solid #dadce0;border-radius:4px;text-decoration:none">📅 Google — '.esc_html(wp_date('d/m',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start']).'</a>';
-			if($ics)echo '<br><a href="'.esc_url(self::ics_url($order->get_id(),$iid)).'" style="display:inline-block;margin-top:8px">📆 Apple / Outlook / iCalendar — όλες οι ημερομηνίες</a>';
+
+			$card='font-family:Roboto,Segoe UI,Arial,sans-serif;margin:22px 0;padding:18px;border:1px solid #e1e5e9;border-radius:10px;background:#fafbfc;color:#202a33';
+			$button='display:inline-block;margin:7px 7px 0 0;padding:10px 14px;border-radius:7px;text-decoration:none;font-weight:600;line-height:1.25';
+			echo '<div style="'.esc_attr($card).'">';
+			echo '<div style="font-size:16px;font-weight:700;margin-bottom:7px">'.esc_html($item->get_name()).'</div>';
+			echo '<div style="font-size:14px;line-height:1.55;margin-bottom:10px">📅 '.esc_html__('Προσθέστε την κράτησή σας στο ημερολόγιό σας, ώστε να έχετε αποθηκευμένα την ημερομηνία, την ώρα, την τοποθεσία και τις πληροφορίες του εργαστηρίου.','woocommerce-workshop-bookings').'</div>';
+			if($google){
+				if($count>1)echo '<div style="font-size:13px;color:#5f6b76;margin:5px 0">'.esc_html__('Για Google Calendar, πατήστε κάθε ημερομηνία που θέλετε να προσθέσετε.','woocommerce-workshop-bookings').'</div>';
+				foreach($os as$o){
+					$label='Google Calendar — '.wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'];
+					echo '<a href="'.esc_url(self::google($item,$o,$order,$pid)).'" target="_blank" rel="noopener" style="'.esc_attr($button.';background:#fff;color:#1a73e8;border:1px solid #d7dce1').'">📅 '.esc_html($label).'</a>';
+				}
+			}
+			if($ics){
+				$ics_label=$count>1?'Apple / Outlook / iCalendar — προσθήκη όλων των ημερομηνιών':'Apple / Outlook / iCalendar — προσθήκη στο ημερολόγιο';
+				echo '<a href="'.esc_url(self::ics_url($order->get_id(),$iid)).'" style="'.esc_attr($button.';background:#202a33;color:#fff;border:1px solid #202a33').'">📆 '.esc_html($ics_label).'</a>';
+			}
 			echo '</div>';
 		}
 	}
