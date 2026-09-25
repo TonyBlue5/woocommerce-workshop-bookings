@@ -63,4 +63,5 @@ jobs:
           wp eval "echo class_exists('KWB_GitHub_Updater') ? 'updater-loaded' : 'missing';" --path=/tmp/kwb-test | grep updater-loaded
           wp eval "echo class_exists('KWB_RSVP') ? 'rsvp-loaded' : 'missing';" --path=/tmp/kwb-test | grep rsvp-loaded
           wp eval "echo class_exists('KWB_Settings') ? 'settings-loaded' : 'missing';" --path=/tmp/kwb-test | grep settings-loaded
+          wp eval "echo class_exists('KWB_I18n') ? 'i18n-loaded' : 'missing';" --path=/tmp/kwb-test | grep i18n-loaded
           wp eval "echo defined('WC_VERSION') ? WC_VERSION : 'missing';" --path=/tmp/kwb-test
