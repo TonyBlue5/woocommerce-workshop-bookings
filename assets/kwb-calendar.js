@@ -165,7 +165,7 @@
       clearSelected();
       root.querySelectorAll('.kwb-cal-cell.is-available').forEach(x=>x.classList.add('is-month-selected'));
       const label=info.label||monthName(key);
-      summary.textContent='Επιλέχθηκε ο μήνας '+label+' με σύνολο '+info.count+' συμμετοχές ανά παιδί.';
+      summary.textContent='Επιλέχθηκε ο μήνας '+label+' με σύνολο '+info.count+' '+(+info.count===1?'συμμετοχή':'συμμετοχές')+' ανά παιδί.';
     });
 
     if(type)type.addEventListener('change',()=>{
