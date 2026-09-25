@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.6.1
+Stable tag: 0.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,3 +82,9 @@ Current features:
 * Improved calendar links block in customer emails and order details.
 * Rich Google / Apple / Outlook calendar metadata with product-description fallback.
 * Automatic WooCommerce store-address fallback for calendar location.
+
+
+= 0.6.2 =
+* Fixed delayed GitHub update detection.
+* Update metadata refreshes promptly instead of being held for 12 hours.
+* Dashboard > Updates > Check again clears the plugin update cache.
