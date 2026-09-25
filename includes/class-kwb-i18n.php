@@ -13,6 +13,11 @@ final class KWB_I18n {
 	public static function is_greek(){return 0===strpos(self::locale(),'el');}
 	public static function t($key,$replace=array()){
 		$en=array(
+			'requires_woocommerce'=>'WooCommerce must be active.',
+			'booking_tab'=>'Workshop Booking',
+			'placeholders'=>'Available placeholders',
+			'participation_count_singular'=>'participation',
+			'participation_count_plural'=>'participations',
 			'enable_booking'=>'Enable booking',
 			'monthly_participation'=>'Monthly participation',
 			'monthly_reserves_all'=>'Reserves a place in all sessions of the selected month.',
@@ -132,6 +137,11 @@ final class KWB_I18n {
 			'day_short'=>array('Mo','Tu','We','Th','Fr','Sa','Su'),
 		);
 		$el=array(
+			'requires_woocommerce'=>'Απαιτείται ενεργό WooCommerce.',
+			'booking_tab'=>'Κράτηση εργαστηρίου',
+			'placeholders'=>'Διαθέσιμες μεταβλητές',
+			'participation_count_singular'=>'συμμετοχή',
+			'participation_count_plural'=>'συμμετοχές',
 			'enable_booking'=>'Ενεργοποίηση booking',
 			'monthly_participation'=>'Μηνιαία συμμετοχή',
 			'monthly_reserves_all'=>'Δεσμεύει θέση σε όλες τις συναντήσεις του επιλεγμένου μήνα.',
@@ -224,7 +234,7 @@ final class KWB_I18n {
 			'event_title'=>'Τίτλος event',
 			'event_description'=>'Περιγραφή event',
 			'default_location'=>'Προεπιλεγμένη τοποθεσία',
-			'booking_defaults'=>'Booking defaults',
+			'booking_defaults'=>'Προεπιλογές κρατήσεων',
 			'default_months'=>'Προεπιλεγμένοι μήνες',
 			'show'=>'Εμφάνιση',
 			'months_ahead'=>'μηνών μπροστά',
