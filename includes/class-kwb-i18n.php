@@ -127,7 +127,7 @@ final class KWB_I18n {
 			'unavailable_month'=>'Month unavailable',
 			'selected_date'=>'Selected date {{date}}, {{time}}.',
 			'place'=>'place','places'=>'places',
-			'selected_month'=>'Selected {{month}} with a total of {{count}} participation{{plural}} per participant.',
+			'selected_month'=>'Selected {{month}} with a total of {{count}} {{participation_word}} per participant.',
 			'months'=>array('January','February','March','April','May','June','July','August','September','October','November','December'),
 			'day_short'=>array('Mo','Tu','We','Th','Fr','Sa','Su'),
 		);
