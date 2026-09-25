@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.1
+- Refined storefront booking calendar typography and spacing with a Roboto-first font stack.
+- Active workshop dates always show date, time and remaining capacity without relying on hover styles.
+- Monthly selection button no longer includes the remaining-seat count.
+- Monthly selection summary now explains the total number of participations per child.
+- Improved customer calendar section in order details and emails with clear instructions and cleaner Google / Apple / Outlook buttons.
+- Added per-workshop calendar description override with fallback to the WooCommerce product short description.
+- Calendar exports now automatically enrich descriptions with booking type, date, time, order context and product link.
+- Calendar location now falls back from workshop override to global plugin location and then to the WooCommerce store address.
+- Google Calendar and .ics exports use the same enriched title, description and location data.
+
+
 ## 0.6.0
 - Commercial API-free architecture: no Google Cloud project, OAuth client, Client ID, Client Secret or Calendar API is required.
 - Direct “Add to Google Calendar” links are generated locally for each booked occurrence.
