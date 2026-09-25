@@ -43,8 +43,8 @@ A passing workflow means the plugin can be installed and activated with the test
 
 Versions follow Semantic Versioning. Stable builds are tagged as `vX.Y.Z`. The release workflow produces:
 
-- `kangiroo-workshop-bookings.zip`
-- `kangiroo-workshop-bookings.zip.sha256`
+- `woocommerce-workshop-bookings.zip`
+- `woocommerce-workshop-bookings.zip.sha256`
 
 ## License
 
