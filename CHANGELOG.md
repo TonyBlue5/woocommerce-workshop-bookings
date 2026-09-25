@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3
+- Fixed monthly-only workshop products so their scheduled dates, times and remaining places are still shown in the visual calendar.
+- Renamed “Maximum children per booking” to the neutral “Maximum participations per booking”.
+- Front-end quantity help now refers to participants rather than children.
+- Added automatic English / Greek UI based on the WordPress locale.
+- English is the default commercial UI; Greek is selected automatically for el_* WordPress locales.
+- Internationalized product booking settings, visual calendar, cart/order labels, customer calendar instructions, RSVP reminders and RSVP response pages.
+- Localized the JavaScript calendar and admin schedule editor.
+- Added regression coverage for monthly-only calendar visibility and English default terminology.
+
+
 ## 0.6.2
 - Fixed delayed update detection caused by a 12-hour custom GitHub release cache.
 - GitHub release metadata now refreshes every 10 minutes when no newer version is cached.
