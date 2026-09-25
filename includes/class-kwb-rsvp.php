@@ -17,7 +17,7 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order)return;
 		foreach($order->get_items('line_item') as $item_id=>$item){
 			foreach(KWB_Booking::item_occurrences($item) as $occ){
-				$run=$occ['start_dt']->getTimestamp()-(4*HOUR_IN_SECONDS);
+				$lead=max(5,absint(KWB_Settings::get('reminder_lead_minutes',240)));$run=$occ['start_dt']->getTimestamp()-($lead*MINUTE_IN_SECONDS);
 				if($run<=time()+60)continue;
 				$args=array((int)$order_id,(int)$item_id,(string)$occ['id']);
 				if(!wp_next_scheduled(self::CRON_HOOK,$args))wp_schedule_single_event($run,self::CRON_HOOK,$args);
@@ -56,8 +56,8 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order||in_array($order->get_status(),array('cancelled','refunded','failed'),true))return;
 		$item=$order->get_item($item_id);if(!$item)return;
 		$occ=null;foreach(KWB_Booking::item_occurrences($item) as $o)if(hash_equals((string)$occurrence_id,(string)$o['id'])){$occ=$o;break;}if(!$occ)return;
-		if(KWB_Booking::occurrence_declined($item,$occurrence_id))return;
-		$to=$order->get_billing_email();if(!is_email($to))return;
+		if(!KWB_Settings::get('reminder_enabled',1)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
+		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
 		$subject=sprintf('Υπενθύμιση: %s σήμερα στις %s',$item->get_name(),$occ['start']);
 		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> σήμερα στις <strong>'.esc_html($occ['start']).'</strong>.</p>';
@@ -78,12 +78,12 @@ final class KWB_RSVP {
 		$occ=isset($_GET['occurrence'])?sanitize_text_field(wp_unslash($_GET['occurrence'])):'';
 		$answer=isset($_GET['answer'])?sanitize_key(wp_unslash($_GET['answer'])):'';
 		$token=isset($_GET['token'])?sanitize_text_field(wp_unslash($_GET['token'])):'';
-		if(!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
+		if(!KWB_Settings::get('rsvp_enabled',1)||!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
 		$order=wc_get_order($order_id);$item=$order?$order->get_item($item_id):false;if(!$item){status_header(404);exit;}
 		$valid=false;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;break;}if(!$valid){status_header(404);exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$yes=array_values(array_diff($yes,array($occ)));$no=array_values(array_diff($no,array($occ)));
-		if('yes'===$answer)$yes[]=$occ;else$no[]=$occ;
+		if('yes'===$answer)$yes[]=$occ;else if(KWB_Settings::get('release_on_no',1))$no[]=$occ;
 		$item->update_meta_data('_kwb_confirmed_occurrences',array_values(array_unique($yes)));
 		$item->update_meta_data('_kwb_declined_occurrences',array_values(array_unique($no)));
 		$item->save();
