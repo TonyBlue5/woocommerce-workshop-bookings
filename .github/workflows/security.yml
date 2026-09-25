@@ -50,6 +50,8 @@ jobs:
           grep -F "openssl_verify" includes/class-kwb-updater.php
           grep -F "hash_equals(\$r['sha256'],\$actual)" includes/class-kwb-updater.php
           grep -F "const PUBLIC_KEY" includes/class-kwb-updater.php
+          grep -F "10*MINUTE_IN_SECONDS" includes/class-kwb-updater.php
+          grep -F "delete_site_transient('kwb_github_release')" includes/class-kwb-updater.php
           grep -F "hash_hmac('sha256'" includes/class-kwb-rsvp.php
           grep -F "wp_schedule_single_event" includes/class-kwb-rsvp.php
           test -s release-public.pem
