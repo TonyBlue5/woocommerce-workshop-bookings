@@ -63,3 +63,14 @@ Example:
 * Four-hour attendance reminder emails with signed YES/NO response links.
 * Declined individual occurrences release their capacity.
 * Four-hour iCalendar alarms.
+
+
+= 0.5.0 =
+* Generic commercial branding by e-iT.
+* Configurable reminders and per-workshop overrides.
+* Google Calendar OAuth connection wizard.
+* Encrypted Google credentials and refresh tokens.
+* Writable calendar selection and connection test.
+* Google event creation with attendee invitations.
+* Google RSVP synchronization back to booking availability.
+* Manual Google sync and diagnostics.
