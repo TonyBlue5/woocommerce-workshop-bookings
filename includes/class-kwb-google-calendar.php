@@ -18,6 +18,7 @@ final class KWB_Google_Calendar {
 		add_action('admin_post_kwb_google_callback',array(__CLASS__,'callback'));
 		add_action('admin_post_kwb_google_disconnect',array(__CLASS__,'disconnect'));
 		add_action('admin_post_kwb_google_test',array(__CLASS__,'test_connection'));
+		add_action('admin_post_kwb_google_sync_now',array(__CLASS__,'sync_now'));
 		add_action('woocommerce_order_status_processing',array(__CLASS__,'sync_order'),20);
 		add_action('woocommerce_order_status_completed',array(__CLASS__,'sync_order'),20);
 		add_action('woocommerce_order_status_cancelled',array(__CLASS__,'remove_order_events'),20);
@@ -66,7 +67,7 @@ final class KWB_Google_Calendar {
 		if($secret)return$secret;
 		// One-time migration from early v0.5 development builds.
 		$legacy=(string)KWB_Settings::get('google_client_secret','');
-		if($legacy){self::store_client_secret($legacy);return$legacy;}
+		if($legacy){self::store_client_secret($legacy);$all=KWB_Settings::all();$all['google_client_secret']='';update_option(KWB_Settings::OPTION,$all,false);return$legacy;}
 		return'';
 	}
 	public static function has_client_secret(){return''!==self::client_secret();}
@@ -194,8 +195,8 @@ final class KWB_Google_Calendar {
 		$body=array(
 			'summary'=>'Workshop Bookings — connection test',
 			'description'=>'Temporary event created automatically to verify write access. It will be deleted immediately.',
-			'start'=>array('dateTime'=>wp_date(DATE_RFC3339,$now,wp_timezone()),'timeZone'=>wp_timezone_string()),
-			'end'=>array('dateTime'=>wp_date(DATE_RFC3339,$now+5*MINUTE_IN_SECONDS,wp_timezone()),'timeZone'=>wp_timezone_string()),
+			'start'=>array('dateTime'=>wp_date(DATE_RFC3339,$now,wp_timezone())),
+			'end'=>array('dateTime'=>wp_date(DATE_RFC3339,$now+5*MINUTE_IN_SECONDS,wp_timezone())),
 		);
 		$event=self::request('POST','/calendars/'.rawurlencode($calendar).'/events?sendUpdates=none',$body);
 		if(is_wp_error($event)||empty($event['id']))self::error_return('test_create');
@@ -226,8 +227,8 @@ final class KWB_Google_Calendar {
 					'summary'=>self::render_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$order,$item,$occ),
 					'description'=>self::render_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$order,$item,$occ),
 					'location'=>KWB_Booking::location(self::product_id($item)),
-					'start'=>array('dateTime'=>$occ['start_dt']->format(DATE_RFC3339),'timeZone'=>wp_timezone_string()),
-					'end'=>array('dateTime'=>$occ['end_dt']->format(DATE_RFC3339),'timeZone'=>wp_timezone_string()),
+					'start'=>array('dateTime'=>$occ['start_dt']->format(DATE_RFC3339)),
+					'end'=>array('dateTime'=>$occ['end_dt']->format(DATE_RFC3339)),
 					'extendedProperties'=>array('private'=>array('kwb_order_id'=>(string)$order_id,'kwb_item_id'=>(string)$item_id,'kwb_occurrence_id'=>(string)$occ['id'])),
 				);
 				$alarm=absint(KWB_Settings::get('calendar_alarm_minutes',240));
@@ -244,6 +245,16 @@ final class KWB_Google_Calendar {
 			if($changed){$item->update_meta_data('_kwb_google_events',$stored);$item->save();}
 		}
 		self::set_status('ok','Τελευταία δημιουργία/ενημέρωση Google events ολοκληρώθηκε.');
+	}
+
+	public static function sync_now(){
+		self::guard('kwb_google_sync_now');
+		if(!self::connected())self::error_return('not_connected');
+		$orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold'),'limit'=>200,'return'=>'ids','orderby'=>'date','order'=>'DESC'));
+		foreach($orders as$order_id)self::sync_order($order_id);
+		self::sync_rsvp();
+		self::set_status('ok','Χειροκίνητος συγχρονισμός Google Calendar ολοκληρώθηκε.');
+		wp_safe_redirect(self::admin_return(array('kwb_google'=>'sync_ok')));exit;
 	}
 
 	public static function remove_order_events($order_id){
