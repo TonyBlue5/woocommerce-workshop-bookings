@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, recurring-monthly-bookings-v0.3.0]
+    branches: [main, settings-google-wizard-v0.5.0]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
