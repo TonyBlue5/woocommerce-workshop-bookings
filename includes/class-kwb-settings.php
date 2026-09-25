@@ -9,18 +9,18 @@ final class KWB_Settings {
 			'reminder_enabled'=>1,
 			'reminder_lead_minutes'=>240,
 			'email_reminder_enabled'=>1,
-			'reminder_subject_template'=>'Υπενθύμιση: {{workshop}} — {{date}} στις {{time}}',
-			'reminder_message_template'=>'Υπενθύμιση για το εργαστήριο {{workshop}} στις {{date}} {{time}}. Θα μπορέσετε τελικά να έρθετε;',
+			'reminder_subject_template'=>KWB_I18n::t('reminder_subject_default'),
+			'reminder_message_template'=>KWB_I18n::t('reminder_message_default'),
 			'rsvp_enabled'=>1,
 			'release_on_no'=>1,
 			'rsvp_cutoff_minutes'=>30,
-			'rsvp_yes_label'=>'ΝΑΙ, θα έρθουμε',
-			'rsvp_no_label'=>'ΟΧΙ, δεν θα έρθουμε',
+			'rsvp_yes_label'=>KWB_I18n::t('yes_default'),
+			'rsvp_no_label'=>KWB_I18n::t('no_default'),
 			'calendar_google_link_enabled'=>1,
 			'calendar_ics_enabled'=>1,
 			'calendar_alarm_minutes'=>240,
 			'calendar_title_template'=>'{{workshop}}',
-			'calendar_description_template'=>'Κράτηση #{{order_number}} — {{workshop}}',
+			'calendar_description_template'=>KWB_I18n::t('calendar_description_default'),
 			'calendar_location'=>'',
 			'default_horizon_months'=>3,
 			'default_capacity'=>10,
@@ -77,34 +77,34 @@ final class KWB_Settings {
 
 	public static function page(){
 		if(!current_user_can('manage_woocommerce'))return;$s=self::all();?>
-	<div class="wrap"><h1>Workshop Bookings — Ρυθμίσεις</h1>
+	<div class="wrap"><h1><?php echo esc_html(KWB_I18n::t('settings_title'));?></h1>
 	<form method="post" action="options.php"><?php settings_fields('kwb_settings_group');?>
 
-	<h2>Υπενθυμίσεις & RSVP</h2><table class="form-table"><tbody>
-	<tr><th>Υπενθύμιση</th><td><?php self::checkbox('reminder_enabled','Ενεργή υπενθύμιση');?><br><?php self::number('reminder_lead_minutes','Αποστολή','5','10080','λεπτά πριν');?></td></tr>
-	<tr><th>Email reminder</th><td><?php self::checkbox('email_reminder_enabled','Αποστολή email υπενθύμισης');?></td></tr>
-	<tr><th>Θέμα email</th><td><input class="large-text" name="<?php echo esc_attr(self::OPTION.'[reminder_subject_template]');?>" value="<?php echo esc_attr($s['reminder_subject_template']);?>"><p class="description">Placeholders: {{workshop}}, {{date}}, {{time}}, {{order_number}}</p></td></tr>
-	<tr><th>Κείμενο email</th><td><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION.'[reminder_message_template]');?>"><?php echo esc_textarea($s['reminder_message_template']);?></textarea></td></tr>
-	<tr><th>RSVP</th><td><?php self::checkbox('rsvp_enabled','Να ζητά ΝΑΙ / ΟΧΙ από τον πελάτη');?><br><?php self::checkbox('release_on_no','Με ΟΧΙ να ελευθερώνεται αμέσως η θέση');?><br><?php self::number('rsvp_cutoff_minutes','Τελευταία αλλαγή απάντησης','0','1440','λεπτά πριν την έναρξη');?></td></tr>
-	<tr><th>Κείμενα κουμπιών RSVP</th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[rsvp_yes_label]');?>" value="<?php echo esc_attr($s['rsvp_yes_label']);?>" placeholder="ΝΑΙ, θα έρθουμε"> <input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[rsvp_no_label]');?>" value="<?php echo esc_attr($s['rsvp_no_label']);?>" placeholder="ΟΧΙ, δεν θα έρθουμε"></td></tr>
+	<h2><?php echo esc_html(KWB_I18n::t('reminders_rsvp'));?></h2><table class="form-table"><tbody>
+	<tr><th><?php echo esc_html(KWB_I18n::t('reminder'));?></th><td><?php self::checkbox('reminder_enabled',KWB_I18n::t('active_reminder'));?><br><?php self::number('reminder_lead_minutes',KWB_I18n::t('send'),'5','10080',KWB_I18n::t('minutes_before'));?></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('email_reminder'));?></th><td><?php self::checkbox('email_reminder_enabled',KWB_I18n::t('send_email_reminder'));?></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('email_subject'));?></th><td><input class="large-text" name="<?php echo esc_attr(self::OPTION.'[reminder_subject_template]');?>" value="<?php echo esc_attr($s['reminder_subject_template']);?>"><p class="description">Placeholders: {{workshop}}, {{date}}, {{time}}, {{order_number}}</p></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('email_message'));?></th><td><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION.'[reminder_message_template]');?>"><?php echo esc_textarea($s['reminder_message_template']);?></textarea></td></tr>
+	<tr><th>RSVP</th><td><?php self::checkbox('rsvp_enabled',KWB_I18n::t('ask_yes_no'));?><br><?php self::checkbox('release_on_no',KWB_I18n::t('release_on_no'));?><br><?php self::number('rsvp_cutoff_minutes',KWB_I18n::t('last_change'),'0','1440',KWB_I18n::t('before_start'));?></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('rsvp_button_text'));?></th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[rsvp_yes_label]');?>" value="<?php echo esc_attr($s['rsvp_yes_label']);?>" placeholder="<?php echo esc_attr(KWB_I18n::t('yes_default'));?>"> <input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[rsvp_no_label]');?>" value="<?php echo esc_attr($s['rsvp_no_label']);?>" placeholder="<?php echo esc_attr(KWB_I18n::t('no_default'));?>"></td></tr>
 	</tbody></table>
 
-	<h2>Ημερολόγια — χωρίς API</h2>
-	<p>Οι πελάτες προσθέτουν την κράτησή τους στο προσωπικό τους ημερολόγιο χωρίς Google Cloud, OAuth ή API credentials.</p>
+	<h2><?php echo esc_html(KWB_I18n::t('calendars_no_api'));?></h2>
+	<p><?php echo esc_html(KWB_I18n::t('calendar_no_api_desc'));?></p>
 	<table class="form-table"><tbody>
-	<tr><th>Google Calendar</th><td><?php self::checkbox('calendar_google_link_enabled','Εμφάνιση “Add to Google Calendar”');?></td></tr>
-	<tr><th>Apple / Outlook / iCalendar</th><td><?php self::checkbox('calendar_ics_enabled','Εμφάνιση λήψης .ics');?></td></tr>
-	<tr><th>Reminder μέσα στο .ics</th><td><?php self::number('calendar_alarm_minutes','Υπενθύμιση','0','10080','λεπτά πριν');?><p class="description">0 = χωρίς VALARM. Η εφαρμογή ημερολογίου του πελάτη αποφασίζει πώς θα εμφανίσει την ειδοποίηση.</p></td></tr>
-	<tr><th>Τίτλος event</th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_title_template]');?>" value="<?php echo esc_attr($s['calendar_title_template']);?>"><p class="description">Placeholders: {{workshop}}, {{date}}, {{time}}, {{order_number}}</p></td></tr>
-	<tr><th>Περιγραφή event</th><td><textarea class="large-text" rows="3" name="<?php echo esc_attr(self::OPTION.'[calendar_description_template]');?>"><?php echo esc_textarea($s['calendar_description_template']);?></textarea></td></tr>
-	<tr><th>Προεπιλεγμένη τοποθεσία</th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_location]');?>" value="<?php echo esc_attr($s['calendar_location']);?>" placeholder="<?php echo esc_attr(get_bloginfo('name'));?>"></td></tr>
+	<tr><th>Google Calendar</th><td><?php self::checkbox('calendar_google_link_enabled',KWB_I18n::t('show_google'));?></td></tr>
+	<tr><th>Apple / Outlook / iCalendar</th><td><?php self::checkbox('calendar_ics_enabled',KWB_I18n::t('show_ics'));?></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('ics_reminder'));?></th><td><?php self::number('calendar_alarm_minutes',KWB_I18n::t('reminder'),'0','10080',KWB_I18n::t('minutes_before'));?><p class="description"><?php echo esc_html(KWB_I18n::t('ics_alarm_help'));?></p></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('event_title'));?></th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_title_template]');?>" value="<?php echo esc_attr($s['calendar_title_template']);?>"><p class="description">Placeholders: {{workshop}}, {{date}}, {{time}}, {{order_number}}</p></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('event_description'));?></th><td><textarea class="large-text" rows="3" name="<?php echo esc_attr(self::OPTION.'[calendar_description_template]');?>"><?php echo esc_textarea($s['calendar_description_template']);?></textarea></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('default_location'));?></th><td><input class="regular-text" name="<?php echo esc_attr(self::OPTION.'[calendar_location]');?>" value="<?php echo esc_attr($s['calendar_location']);?>" placeholder="<?php echo esc_attr(get_bloginfo('name'));?>"></td></tr>
 	</tbody></table>
 
-	<h2>Booking defaults</h2><table class="form-table"><tbody>
-	<tr><th>Προεπιλεγμένοι μήνες</th><td><?php self::number('default_horizon_months','Εμφάνιση','1','12','μηνών μπροστά');?></td></tr>
-	<tr><th>Προεπιλεγμένη χωρητικότητα</th><td><?php self::number('default_capacity','Θέσεις','1','10000','ανά συνάντηση');?></td></tr>
+	<h2><?php echo esc_html(KWB_I18n::t('booking_defaults'));?></h2><table class="form-table"><tbody>
+	<tr><th><?php echo esc_html(KWB_I18n::t('default_months'));?></th><td><?php self::number('default_horizon_months',KWB_I18n::t('show'),'1','12',KWB_I18n::t('months_ahead'));?></td></tr>
+	<tr><th><?php echo esc_html(KWB_I18n::t('default_capacity'));?></th><td><?php self::number('default_capacity',KWB_I18n::t('capacity'),'1','10000',KWB_I18n::t('places_per_session'));?></td></tr>
 	</tbody></table>
 
-	<?php submit_button('Αποθήκευση ρυθμίσεων');?></form></div><?php
+	<?php submit_button(KWB_I18n::t('save_settings'));?></form></div><?php
 	}
 }
