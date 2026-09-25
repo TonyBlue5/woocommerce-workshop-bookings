@@ -17,7 +17,8 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order)return;
 		foreach($order->get_items('line_item') as $item_id=>$item){
 			foreach(KWB_Booking::item_occurrences($item) as $occ){
-				$lead=max(5,absint(KWB_Settings::get('reminder_lead_minutes',240)));$run=$occ['start_dt']->getTimestamp()-($lead*MINUTE_IN_SECONDS);
+				$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+				$lead=KWB_Booking::reminder_minutes($pid);$run=$occ['start_dt']->getTimestamp()-($lead*MINUTE_IN_SECONDS);
 				if($run<=time()+60)continue;
 				$args=array((int)$order_id,(int)$item_id,(string)$occ['id']);
 				if(!wp_next_scheduled(self::CRON_HOOK,$args))wp_schedule_single_event($run,self::CRON_HOOK,$args);
@@ -56,7 +57,8 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order||in_array($order->get_status(),array('cancelled','refunded','failed'),true))return;
 		$item=$order->get_item($item_id);if(!$item)return;
 		$occ=null;foreach(KWB_Booking::item_occurrences($item) as $o)if(hash_equals((string)$occurrence_id,(string)$o['id'])){$occ=$o;break;}if(!$occ)return;
-		if(!KWB_Settings::get('reminder_enabled',1)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
+		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
 		$subject=sprintf('Υπενθύμιση: %s σήμερα στις %s',$item->get_name(),$occ['start']);
@@ -78,9 +80,12 @@ final class KWB_RSVP {
 		$occ=isset($_GET['occurrence'])?sanitize_text_field(wp_unslash($_GET['occurrence'])):'';
 		$answer=isset($_GET['answer'])?sanitize_key(wp_unslash($_GET['answer'])):'';
 		$token=isset($_GET['token'])?sanitize_text_field(wp_unslash($_GET['token'])):'';
-		if(!KWB_Settings::get('rsvp_enabled',1)||!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
+		if(!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
 		$order=wc_get_order($order_id);$item=$order?$order->get_item($item_id):false;if(!$item){status_header(404);exit;}
-		$valid=false;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;break;}if(!$valid){status_header(404);exit;}
+		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+		if(!KWB_Booking::rsvp_enabled($pid)){status_header(403);exit;}
+		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
+		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo 'Η προθεσμία αλλαγής απάντησης έχει λήξει.';exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$yes=array_values(array_diff($yes,array($occ)));$no=array_values(array_diff($no,array($occ)));
 		if('yes'===$answer)$yes[]=$occ;else if(KWB_Settings::get('release_on_no',1))$no[]=$occ;
