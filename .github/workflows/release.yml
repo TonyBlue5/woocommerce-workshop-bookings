@@ -25,10 +25,10 @@ jobs:
         run: |
           set -euo pipefail
           echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
-          grep -F "Version: ${TAG#v}" kangiroo-workshop-bookings.php
-          grep -F "define( 'KWB_VERSION', '${TAG#v}' )" kangiroo-workshop-bookings.php
+          grep -F "Version: ${TAG#v}" woocommerce-workshop-bookings.php
+          grep -F "define( 'KWB_VERSION', '${TAG#v}' )" woocommerce-workshop-bookings.php
           grep -F "const VERSION='${TAG#v}'" includes/class-kwb-updater.php
-          php -l kangiroo-workshop-bookings.php
+          php -l woocommerce-workshop-bookings.php
           php -l includes/class-kwb-booking.php
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
@@ -51,19 +51,19 @@ jobs:
       - name: Build plugin ZIP
         run: |
           set -euo pipefail
-          mkdir -p build/kangiroo-workshop-bookings/includes build/kangiroo-workshop-bookings/assets
-          cp kangiroo-workshop-bookings.php readme.txt LICENSE build/kangiroo-workshop-bookings/
-          cp includes/*.php build/kangiroo-workshop-bookings/includes/
-          cp assets/* build/kangiroo-workshop-bookings/assets/
+          mkdir -p build/woocommerce-workshop-bookings/includes build/woocommerce-workshop-bookings/assets
+          cp woocommerce-workshop-bookings.php readme.txt LICENSE build/woocommerce-workshop-bookings/
+          cp includes/*.php build/woocommerce-workshop-bookings/includes/
+          cp assets/* build/woocommerce-workshop-bookings/assets/
           cd build
-          zip -qr kangiroo-workshop-bookings.zip kangiroo-workshop-bookings
-          unzip -tq kangiroo-workshop-bookings.zip
-          sha256sum kangiroo-workshop-bookings.zip > kangiroo-workshop-bookings.zip.sha256
+          zip -qr woocommerce-workshop-bookings.zip woocommerce-workshop-bookings
+          unzip -tq woocommerce-workshop-bookings.zip
+          sha256sum woocommerce-workshop-bookings.zip > woocommerce-workshop-bookings.zip.sha256
       - name: Sign and verify release
         run: |
           set -euo pipefail
-          openssl dgst -sha256 -sign /tmp/kwb-release-private.pem -out build/kangiroo-workshop-bookings.zip.sig build/kangiroo-workshop-bookings.zip
-          openssl dgst -sha256 -verify release-public.pem -signature build/kangiroo-workshop-bookings.zip.sig build/kangiroo-workshop-bookings.zip
+          openssl dgst -sha256 -sign /tmp/kwb-release-private.pem -out build/woocommerce-workshop-bookings.zip.sig build/woocommerce-workshop-bookings.zip
+          openssl dgst -sha256 -verify release-public.pem -signature build/woocommerce-workshop-bookings.zip.sig build/woocommerce-workshop-bookings.zip
           rm -f /tmp/kwb-release-private.pem
       - name: Create tag and GitHub release
         env:
@@ -73,4 +73,4 @@ jobs:
           set -euo pipefail
           git tag "$TAG"
           git push origin "$TAG"
-          gh release create "$TAG" build/kangiroo-workshop-bookings.zip build/kangiroo-workshop-bookings.zip.sha256 build/kangiroo-workshop-bookings.zip.sig --generate-notes --title "Kangiroo Workshop Bookings ${TAG#v}"
+          gh release create "$TAG" build/woocommerce-workshop-bookings.zip build/woocommerce-workshop-bookings.zip.sha256 build/woocommerce-workshop-bookings.zip.sig --generate-notes --title "Workshop Bookings for WooCommerce ${TAG#v}"
