@@ -166,7 +166,7 @@
       clearSelected();
       root.querySelectorAll('.kwb-cal-cell.is-available').forEach(x=>x.classList.add('is-month-selected'));
       const label=info.label||monthName(key);
-      if(i18n.greek){summary.textContent='Επιλέχθηκε ο μήνας '+label+' με σύνολο '+info.count+' '+(+info.count===1?'συμμετοχή':'συμμετοχές')+' ανά συμμετέχοντα.';}else{summary.textContent='Selected '+label+' with a total of '+info.count+' '+(+info.count===1?'participation':'participations')+' per participant.';}
+      let template=i18n.selected_month||(i18n.greek?'Επιλέχθηκε ο μήνας {{month}} με σύνολο {{count}} {{participation_word}} ανά συμμετέχοντα.':'Selected {{month}} with a total of {{count}} {{participation_word}} per participant.');const participationWord=i18n.greek?(+info.count===1?'συμμετοχή':'συμμετοχές'):(+info.count===1?'participation':'participations');summary.textContent=template.replace('{{month}}',label).replace('{{count}}',info.count).replace('{{participation_word}}',participationWord);
     });
 
     if(type)type.addEventListener('change',()=>{
