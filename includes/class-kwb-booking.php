@@ -223,14 +223,50 @@ final class KWB_Booking {
 	public static function booked($id,$oid){$orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold'),'limit'=>-1,'return'=>'ids'));$n=0;foreach($orders as$orid){$order=wc_get_order($orid);if(!$order)continue;foreach($order->get_items('line_item')as$item){$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();if((int)$pid!==(int)$id||self::occurrence_declined($item,$oid))continue;$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;foreach($list as$o)if(isset($o['id'])&&hash_equals((string)$oid,(string)$o['id'])){$n+=absint($item->get_quantity());break;}}}return$n;}
 
 	public static function item_occurrences($item){$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);$out=array();if(is_array($list))foreach($list as$o)if(!empty($o['id'])&&self::date_ok($o['date']??'')&&self::time_ok($o['start']??'')&&self::time_ok($o['end']??''))$out[]=self::hydrate($o);return$out;}
+
+	private static function calendar_template($template,$item,$o,$order){
+		return strtr((string)$template,array(
+			'{{workshop}}'=>$item->get_name(),
+			'{{date}}'=>wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()),
+			'{{time}}'=>$o['start'],
+			'{{order_number}}'=>$order->get_order_number(),
+		));
+	}
 	public static function email_links($order,$admin,$plain,$email){if($admin||!$order instanceof WC_Order||in_array($order->get_status(),array('failed','cancelled','refunded'),true))return;self::calendar_links($order,$plain);}
 	public static function order_links($order){if($order instanceof WC_Order)self::calendar_links($order,false);}
-	private static function calendar_links($order,$plain=false){foreach($order->get_items('line_item')as$iid=>$item){$os=self::item_occurrences($item);if(!$os)continue;if($plain){echo "\n".esc_html($item->get_name())."\n";foreach($os as$o)echo 'Google Calendar: '.esc_url_raw(self::google($item->get_name(),$o,$order))."\n";echo 'Apple/iCalendar: '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";continue;}echo '<div style="margin:16px 0"><strong>'.esc_html($item->get_name()).'</strong><br>';foreach($os as$o)echo '<a href="'.esc_url(self::google($item->get_name(),$o,$order)).'" target="_blank" rel="noopener" style="display:inline-block;margin:6px 6px 0 0">📅 '.esc_html(wp_date('d/m',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start']).'</a>';echo '<br><a href="'.esc_url(self::ics_url($order->get_id(),$iid)).'" style="display:inline-block;margin-top:8px">🍎 Apple / iCalendar — όλες οι ημερομηνίες</a></div>';}}
-	private static function google($title,$o,$order){$utc=new DateTimeZone('UTC');return add_query_arg(array('action'=>'TEMPLATE','text'=>$title,'dates'=>$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z').'/'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z'),'details'=>sprintf('Κράτηση WooCommerce #%s',$order->get_order_number()),'location'=>self::location($item->get_product_id())),'https://calendar.google.com/calendar/render');}
+	private static function calendar_links($order,$plain=false){
+		$google=(bool)KWB_Settings::get('calendar_google_link_enabled',1);$ics=(bool)KWB_Settings::get('calendar_ics_enabled',1);if(!$google&&!$ics)return;
+		foreach($order->get_items('line_item')as$iid=>$item){
+			$os=self::item_occurrences($item);if(!$os)continue;$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+			if($plain){
+				echo "\n".esc_html($item->get_name())."\n";
+				if($google)foreach($os as$o)echo 'Google Calendar: '.esc_url_raw(self::google($item,$o,$order,$pid))."\n";
+				if($ics)echo 'Apple / Outlook / iCalendar: '.esc_url_raw(self::ics_url($order->get_id(),$iid))."\n";
+				continue;
+			}
+			echo '<div style="margin:16px 0"><strong>'.esc_html($item->get_name()).'</strong><br>';
+			if($google)foreach($os as$o)echo '<a href="'.esc_url(self::google($item,$o,$order,$pid)).'" target="_blank" rel="noopener" style="display:inline-block;margin:6px 6px 0 0;padding:7px 10px;border:1px solid #dadce0;border-radius:4px;text-decoration:none">📅 Google — '.esc_html(wp_date('d/m',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start']).'</a>';
+			if($ics)echo '<br><a href="'.esc_url(self::ics_url($order->get_id(),$iid)).'" style="display:inline-block;margin-top:8px">📆 Apple / Outlook / iCalendar — όλες οι ημερομηνίες</a>';
+			echo '</div>';
+		}
+	}
+	private static function google($item,$o,$order,$product_id){
+		$utc=new DateTimeZone('UTC');
+		$title=self::calendar_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$item,$o,$order);
+		$details=self::calendar_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$item,$o,$order);
+		return add_query_arg(array(
+			'action'=>'TEMPLATE',
+			'text'=>$title,
+			'dates'=>$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z').'/'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z'),
+			'details'=>$details,
+			'location'=>self::location($product_id),
+			'ctz'=>wp_timezone_string(),
+		),'https://calendar.google.com/calendar/render');
+	}
 	private static function sig($oid,$iid){$order=wc_get_order(absint($oid));$item=$order?$order->get_item(absint($iid)):false;$ctx=absint($oid).'|'.absint($iid);if($order&&$item)$ctx.='|'.$order->get_order_key().'|'.hash('sha256',(string)$item->get_meta('_kwb_occurrences',true));return hash_hmac('sha256',$ctx,wp_salt('auth'));}
 	private static function ics_url($oid,$iid){return add_query_arg(array('kwb_ics'=>1,'order_id'=>absint($oid),'item_id'=>absint($iid),'sig'=>self::sig($oid,$iid)),home_url('/'));}
 	public static function ics_download(){// phpcs:disable WordPress.Security.NonceVerification.Recommended -- HMAC-authenticated read-only endpoint.
-		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Workshop Bookings for WooCommerce//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc($item->get_name());$ics[]='DESCRIPTION:'.self::esc(sprintf('Κράτηση WooCommerce #%s',$order->get_order_number()));$ics[]='LOCATION:'.self::esc(self::location($item->get_product_id()));$alarm=absint(KWB_Settings::get('calendar_alarm_minutes',240));if($alarm>0){$ics[]='BEGIN:VALARM';$ics[]='TRIGGER:-PT'.$alarm.'M';$ics[]='ACTION:DISPLAY';$ics[]='DESCRIPTION:'.self::esc('Υπενθύμιση εργαστηρίου');$ics[]='END:VALARM';}$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="workshop-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Workshop Bookings for WooCommerce//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc(self::calendar_template(KWB_Settings::get('calendar_title_template','{{workshop}}'),$item,$o,$order));$ics[]='DESCRIPTION:'.self::esc(self::calendar_template(KWB_Settings::get('calendar_description_template','Κράτηση #{{order_number}} — {{workshop}}'),$item,$o,$order));$ics[]='LOCATION:'.self::esc(self::location($pid));$alarm=absint(KWB_Settings::get('calendar_alarm_minutes',240));if($alarm>0){$ics[]='BEGIN:VALARM';$ics[]='TRIGGER:-PT'.$alarm.'M';$ics[]='ACTION:DISPLAY';$ics[]='DESCRIPTION:'.self::esc('Υπενθύμιση εργαστηρίου');$ics[]='END:VALARM';}$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="workshop-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo implode("\r\n",$ics)."\r\n";// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;}
 	private static function esc($v){return str_replace(array('\\',';',',',"\r\n","\r","\n"),array('\\\\','\\;','\\,','\\n','\\n','\\n'),(string)$v);}
