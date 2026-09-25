@@ -1,10 +1,10 @@
-=== Kangiroo Workshop Bookings for WooCommerce ===
+=== Workshop Bookings for WooCommerce by e-iT ===
 Contributors: TonyBlue5
 Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Lightweight workshop booking slots for WooCommerce products with capacity contro
 
 == Description ==
 
-Kangiroo Workshop Bookings keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
+Workshop Bookings for WooCommerce keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
 
 Current features:
 * Monthly participation that reserves every scheduled session in a selected month.
@@ -63,3 +63,14 @@ Example:
 * Four-hour attendance reminder emails with signed YES/NO response links.
 * Declined individual occurrences release their capacity.
 * Four-hour iCalendar alarms.
+
+
+= 0.5.0 =
+* Generic commercial branding by e-iT.
+* Configurable reminders and per-workshop overrides.
+* Google Calendar OAuth connection wizard.
+* Encrypted Google credentials and refresh tokens.
+* Writable calendar selection and connection test.
+* Google event creation with attendee invitations.
+* Google RSVP synchronization back to booking availability.
+* Manual Google sync and diagnostics.

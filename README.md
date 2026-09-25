@@ -43,8 +43,8 @@ A passing workflow means the plugin can be installed and activated with the test
 
 Versions follow Semantic Versioning. Stable builds are tagged as `vX.Y.Z`. The release workflow produces:
 
-- `kangiroo-workshop-bookings.zip`
-- `kangiroo-workshop-bookings.zip.sha256`
+- `woocommerce-workshop-bookings.zip`
+- `woocommerce-workshop-bookings.zip.sha256`
 
 ## License
 
@@ -72,3 +72,20 @@ The product editor uses structured schedule rows (weekday, start, end, capacity)
 Four hours before each paid occurrence, WordPress schedules an attendance reminder email with signed **YES / NO** links. A **NO** response releases that occurrence's seat without cancelling the rest of a monthly booking. Calendar exports also include a four-hour display reminder.
 
 Native Google Calendar attendee RSVP requires a connected organizer Google Calendar account; the plugin's signed email RSVP works independently and is the fallback for Apple Calendar and non-Google users.
+
+
+## Google Calendar OAuth
+
+The plugin includes a WordPress-admin connection wizard for Google Calendar:
+
+1. Enable Google Calendar API in a Google Cloud project.
+2. Create an OAuth 2.0 Web application and copy the exact redirect URI displayed by the plugin.
+3. Save the Client ID and Client Secret in Workshop Bookings settings.
+4. Connect the organizer Google account through Google's OAuth consent screen.
+5. Select a writable calendar and run the built-in connection test.
+
+OAuth access/refresh tokens and the Client Secret are encrypted at rest with AES-256-GCM using a key derived from WordPress salts. They are never committed to the repository.
+
+For completed/processing bookings, the plugin can create one Google event per occurrence, invite the billing email as an attendee, send Google invitation updates, and poll attendee RSVP responses back into booking capacity. A declined occurrence can release its seat while preserving the rest of a monthly booking.
+
+The plugin also keeps its own signed email RSVP reminder because Google Calendar reminder settings are private to each attendee and cannot be forced by the organizer.

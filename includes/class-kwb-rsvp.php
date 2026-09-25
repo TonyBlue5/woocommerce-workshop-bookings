@@ -17,7 +17,8 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order)return;
 		foreach($order->get_items('line_item') as $item_id=>$item){
 			foreach(KWB_Booking::item_occurrences($item) as $occ){
-				$run=$occ['start_dt']->getTimestamp()-(4*HOUR_IN_SECONDS);
+				$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+				$lead=KWB_Booking::reminder_minutes($pid);$run=$occ['start_dt']->getTimestamp()-($lead*MINUTE_IN_SECONDS);
 				if($run<=time()+60)continue;
 				$args=array((int)$order_id,(int)$item_id,(string)$occ['id']);
 				if(!wp_next_scheduled(self::CRON_HOOK,$args))wp_schedule_single_event($run,self::CRON_HOOK,$args);
@@ -56,11 +57,12 @@ final class KWB_RSVP {
 		$order=wc_get_order($order_id);if(!$order||in_array($order->get_status(),array('cancelled','refunded','failed'),true))return;
 		$item=$order->get_item($item_id);if(!$item)return;
 		$occ=null;foreach(KWB_Booking::item_occurrences($item) as $o)if(hash_equals((string)$occurrence_id,(string)$o['id'])){$occ=$o;break;}if(!$occ)return;
-		if(KWB_Booking::occurrence_declined($item,$occurrence_id))return;
-		$to=$order->get_billing_email();if(!is_email($to))return;
+		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
+		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
-		$subject=sprintf('Υπενθύμιση: %s σήμερα στις %s',$item->get_name(),$occ['start']);
-		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> σήμερα στις <strong>'.esc_html($occ['start']).'</strong>.</p>';
+		$subject=sprintf('Υπενθύμιση: %s — %s στις %s',$item->get_name(),date_i18n('d/m/Y',strtotime($occ['date'])),$occ['start']);
+		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> στις <strong>'.esc_html(date_i18n('d/m/Y',strtotime($occ['date'])).' '.$occ['start']).'</strong>.</p>';
 		$message.='<p>Θα μπορέσετε τελικά να έρθετε;</p>';
 		$message.='<p><a href="'.esc_url($yes).'" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#fff;text-decoration:none;border-radius:4px">ΝΑΙ, θα έρθουμε</a> ';
 		$message.='<a href="'.esc_url($no).'" style="display:inline-block;padding:10px 18px;background:#b32d2e;color:#fff;text-decoration:none;border-radius:4px">ΟΧΙ, δεν θα έρθουμε</a></p>';
@@ -80,15 +82,18 @@ final class KWB_RSVP {
 		$token=isset($_GET['token'])?sanitize_text_field(wp_unslash($_GET['token'])):'';
 		if(!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
 		$order=wc_get_order($order_id);$item=$order?$order->get_item($item_id):false;if(!$item){status_header(404);exit;}
-		$valid=false;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;break;}if(!$valid){status_header(404);exit;}
+		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+		if(!KWB_Booking::rsvp_enabled($pid)){status_header(403);exit;}
+		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
+		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo 'Η προθεσμία αλλαγής απάντησης έχει λήξει.';exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$yes=array_values(array_diff($yes,array($occ)));$no=array_values(array_diff($no,array($occ)));
-		if('yes'===$answer)$yes[]=$occ;else$no[]=$occ;
+		if('yes'===$answer)$yes[]=$occ;else if(KWB_Settings::get('release_on_no',1))$no[]=$occ;
 		$item->update_meta_data('_kwb_confirmed_occurrences',array_values(array_unique($yes)));
 		$item->update_meta_data('_kwb_declined_occurrences',array_values(array_unique($no)));
 		$item->save();
 		nocache_headers();status_header(200);
-		echo '<!doctype html><html><meta charset="utf-8"><title>Kangiroo</title><body style="font-family:Arial,sans-serif;text-align:center;padding:50px">';
+		echo '<!doctype html><html><meta charset="utf-8"><title>Workshop Bookings</title><body style="font-family:Arial,sans-serif;text-align:center;padding:50px">';
 		echo '<h1>'.('yes'===$answer?'Ευχαριστούμε! Σας περιμένουμε.':'Η θέση σας ελευθερώθηκε. Ευχαριστούμε που μας ενημερώσατε.').'</h1>';
 		echo '</body></html>';// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;

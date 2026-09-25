@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, recurring-monthly-bookings-v0.3.0]
+    branches: [main, settings-google-wizard-v0.5.0]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
@@ -21,10 +21,12 @@ jobs:
           php-version: '8.2'
       - name: PHP syntax
         run: |
-          php -l kangiroo-workshop-bookings.php
+          php -l woocommerce-workshop-bookings.php
           php -l includes/class-kwb-booking.php
           php -l includes/class-kwb-updater.php
           php -l includes/class-kwb-rsvp.php
+          php -l includes/class-kwb-settings.php
+          php -l includes/class-kwb-google-calendar.php
       - name: Reject high-risk PHP execution primitives
         run: |
           set -euo pipefail
@@ -43,6 +45,9 @@ jobs:
           grep -F "const PUBLIC_KEY" includes/class-kwb-updater.php
           grep -F "hash_hmac('sha256'" includes/class-kwb-rsvp.php
           grep -F "wp_schedule_single_event" includes/class-kwb-rsvp.php
+          grep -F "hash_equals((string)\$expected,hash('sha256',\$state))" includes/class-kwb-google-calendar.php
+          grep -F "aes-256-gcm" includes/class-kwb-google-calendar.php
+          grep -F "check_admin_referer" includes/class-kwb-google-calendar.php
           test -s release-public.pem
 
   runtime-security:
@@ -75,10 +80,10 @@ jobs:
           wp config create --path=/tmp/kwb-security --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
           wp core install --path=/tmp/kwb-security --url=http://localhost --title=KWBSecurity --admin_user=testadmin --admin_password='Strong-Test-Password-2026!' --admin_email=test@example.com --skip-email
           wp plugin install woocommerce --activate --path=/tmp/kwb-security
-          mkdir -p /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/includes /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/assets
-          cp kangiroo-workshop-bookings.php readme.txt /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/
-          cp includes/*.php /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/includes/
-          cp assets/* /tmp/kwb-security/wp-content/plugins/kangiroo-workshop-bookings/assets/
-          wp plugin activate kangiroo-workshop-bookings --path=/tmp/kwb-security
+          mkdir -p /tmp/kwb-security/wp-content/plugins/woocommerce-workshop-bookings/includes /tmp/kwb-security/wp-content/plugins/woocommerce-workshop-bookings/assets
+          cp woocommerce-workshop-bookings.php readme.txt /tmp/kwb-security/wp-content/plugins/woocommerce-workshop-bookings/
+          cp includes/*.php /tmp/kwb-security/wp-content/plugins/woocommerce-workshop-bookings/includes/
+          cp assets/* /tmp/kwb-security/wp-content/plugins/woocommerce-workshop-bookings/assets/
+          wp plugin activate woocommerce-workshop-bookings --path=/tmp/kwb-security
       - name: Run recurring booking security regression tests
         run: wp eval-file "$GITHUB_WORKSPACE/tests/security-smoke.php" --path=/tmp/kwb-security | grep security-smoke-ok

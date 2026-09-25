@@ -1,16 +1,16 @@
 <?php
 /**
- * Plugin Name: Kangiroo Workshop Bookings for WooCommerce
+ * Plugin Name: Workshop Bookings for WooCommerce by e-iT
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  * Description: WooCommerce workshop bookings with single-session and monthly recurring participation, shared capacity and calendar exports.
- * Version: 0.4.0
+ * Version: 0.5.0
  * Author: e-iT
  * Requires Plugins: woocommerce
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * WC requires at least: 8.0
  * WC tested up to: 11.1
- * Text Domain: kangiroo-workshop-bookings
+ * Text Domain: woocommerce-workshop-bookings
  * License: GPL-2.0-or-later
  * Update URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  */
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KWB_VERSION', '0.4.0' );
+define( 'KWB_VERSION', '0.5.0' );
 define( 'KWB_PLUGIN_FILE', __FILE__ );
 define( 'KWB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -36,6 +36,8 @@ add_action(
 	}
 );
 
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-settings.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-google-calendar.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rsvp.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-updater.php';
@@ -52,15 +54,17 @@ add_action(
 					if ( ! current_user_can( 'activate_plugins' ) ) {
 						return;
 					}
-					echo '<div class="notice notice-error"><p><strong>Kangiroo Workshop Bookings:</strong> ';
-					esc_html_e( 'Απαιτείται ενεργό WooCommerce.', 'kangiroo-workshop-bookings' );
+					echo '<div class="notice notice-error"><p><strong>Workshop Bookings for WooCommerce:</strong> ';
+					esc_html_e( 'Απαιτείται ενεργό WooCommerce.', 'woocommerce-workshop-bookings' );
 					echo '</p></div>';
 				}
 			);
 			return;
 		}
 
+		KWB_Settings::init();
 		KWB_Booking::init();
 		KWB_RSVP::init();
+		KWB_Google_Calendar::init();
 	}
 );
