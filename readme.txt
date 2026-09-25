@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,3 +73,12 @@ Current features:
 * Capacity check before a previously released seat can be reclaimed.
 * Configurable calendar title, description, location and .ics alarm.
 * Per-workshop reminder, RSVP, booking-cutoff, quantity and location overrides.
+
+
+= 0.6.1 =
+* Improved calendar readability and theme isolation.
+* Active dates always display time and remaining seats.
+* Cleaner monthly selection text and per-child participation summary.
+* Improved calendar links block in customer emails and order details.
+* Rich Google / Apple / Outlook calendar metadata with product-description fallback.
+* Automatic WooCommerce store-address fallback for calendar location.
