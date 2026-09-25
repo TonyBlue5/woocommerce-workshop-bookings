@@ -37,6 +37,7 @@ add_action(
 );
 
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-settings.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-google-calendar.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rsvp.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-updater.php';
@@ -64,5 +65,6 @@ add_action(
 		KWB_Settings::init();
 		KWB_Booking::init();
 		KWB_RSVP::init();
+		KWB_Google_Calendar::init();
 	}
 );
