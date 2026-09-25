@@ -14,6 +14,8 @@ final class KWB_Booking {
 	public static function init(){
 		add_filter('woocommerce_product_data_tabs',array(__CLASS__,'tab'));
 		add_action('woocommerce_product_data_panels',array(__CLASS__,'panel'));
+		add_action('admin_enqueue_scripts',array(__CLASS__,'admin_assets'));
+		add_action('wp_enqueue_scripts',array(__CLASS__,'frontend_assets'));
 		add_action('woocommerce_process_product_meta',array(__CLASS__,'save'));
 		add_filter('woocommerce_is_purchasable',array(__CLASS__,'purchasable'),20,2);
 		add_filter('woocommerce_get_price_html',array(__CLASS__,'price_html'),20,2);
@@ -29,15 +31,29 @@ final class KWB_Booking {
 		add_action('template_redirect',array(__CLASS__,'ics_download'));
 	}
 
+	public static function admin_assets($hook){
+		if(!in_array($hook,array('post.php','post-new.php'),true))return;
+		$screen=get_current_screen();if(!$screen||'product'!==$screen->post_type)return;
+		wp_enqueue_script('kwb-admin',plugins_url('../assets/kwb-admin.js',__FILE__),array(),KWB_VERSION,true);
+		wp_enqueue_style('kwb-admin',plugins_url('../assets/kwb-admin.css',__FILE__),array(),KWB_VERSION);
+	}
+
+	public static function frontend_assets(){
+		if(!is_product())return;
+		wp_enqueue_script('kwb-calendar',plugins_url('../assets/kwb-calendar.js',__FILE__),array(),KWB_VERSION,true);
+		wp_enqueue_style('kwb-calendar',plugins_url('../assets/kwb-calendar.css',__FILE__),array(),KWB_VERSION);
+	}
+
 	public static function tab($tabs){
 		$tabs['kwb_booking']=array('label'=>__('Workshop Booking','kangiroo-workshop-bookings'),'target'=>'kwb_booking_product_data','class'=>array('show_if_simple','show_if_variable'),'priority'=>80);
 		return $tabs;
 	}
 
 	public static function panel(){
-		global $post; if(!$post)return;
+		global $post;if(!$post)return;
 		wp_nonce_field('kwb_save_'.$post->ID,'kwb_nonce');
 		$g=function($k,$d='')use($post){$v=get_post_meta($post->ID,$k,true);return ''===$v?$d:$v;};
+		$schedule=self::schedule($post->ID);$black=array_keys(self::blackouts($post->ID));
 		?>
 		<div id="kwb_booking_product_data" class="panel woocommerce_options_panel hidden"><div class="options_group">
 		<?php
@@ -48,15 +64,30 @@ final class KWB_Booking {
 		woocommerce_wp_text_input(array('id'=>self::META_SINGLE_PRICE,'label'=>__('Τιμή μεμονωμένης (€)','kangiroo-workshop-bookings'),'value'=>$g(self::META_SINGLE_PRICE),'type'=>'number','custom_attributes'=>array('min'=>'0','step'=>'0.01')));
 		woocommerce_wp_text_input(array('id'=>self::META_HORIZON,'label'=>__('Μήνες διαθέσιμοι μπροστά','kangiroo-workshop-bookings'),'value'=>$g(self::META_HORIZON,3),'type'=>'number','custom_attributes'=>array('min'=>'1','max'=>'12','step'=>'1')));
 		?>
-		<p class="form-field"><label for="<?php echo esc_attr(self::META_SCHEDULE);?>"><?php esc_html_e('Εβδομαδιαίο πρόγραμμα','kangiroo-workshop-bookings');?></label>
-		<textarea id="<?php echo esc_attr(self::META_SCHEDULE);?>" name="<?php echo esc_attr(self::META_SCHEDULE);?>" style="width:70%;min-height:140px" placeholder="2|19:15|20:00|10&#10;6|11:00|11:45|10"><?php echo esc_textarea($g(self::META_SCHEDULE));?></textarea>
-		<span class="description" style="display:block;margin-left:150px">1=Δευτέρα … 7=Κυριακή. Μορφή: ΗΜΕΡΑ|ΑΠΟ|ΕΩΣ|ΘΕΣΕΙΣ.</span></p>
-		<p class="form-field"><label for="<?php echo esc_attr(self::META_BLACKOUTS);?>"><?php esc_html_e('Ημερομηνίες χωρίς μάθημα','kangiroo-workshop-bookings');?></label>
-		<textarea id="<?php echo esc_attr(self::META_BLACKOUTS);?>" name="<?php echo esc_attr(self::META_BLACKOUTS);?>" style="width:70%;min-height:90px" placeholder="2026-12-24&#10;2026-12-31"><?php echo esc_textarea($g(self::META_BLACKOUTS));?></textarea>
-		<span class="description" style="display:block;margin-left:150px">Μία ημερομηνία ανά γραμμή, YYYY-MM-DD.</span></p>
+		<div class="kwb-admin-block">
+		<h4>Εβδομαδιαίο πρόγραμμα</h4>
+		<div id="kwb-schedule-rows">
+		<?php foreach($schedule as$r): self::schedule_row($r); endforeach; if(!$schedule)self::schedule_row(array('weekday'=>1,'start'=>'09:00','end'=>'10:00','capacity'=>10));?>
+		</div>
+		<button type="button" class="button" id="kwb-add-schedule">+ Προσθήκη ώρας</button>
+		<textarea id="<?php echo esc_attr(self::META_SCHEDULE);?>" name="<?php echo esc_attr(self::META_SCHEDULE);?>" hidden><?php echo esc_textarea($g(self::META_SCHEDULE));?></textarea>
+		</div>
+		<div class="kwb-admin-block">
+		<h4>Ημερομηνίες χωρίς μάθημα</h4>
+		<div id="kwb-blackout-rows">
+		<?php foreach($black as$d): self::blackout_row($d); endforeach; if(!$black)self::blackout_row('');?>
+		</div>
+		<button type="button" class="button" id="kwb-add-blackout">+ Προσθήκη ημερομηνίας</button>
+		<textarea id="<?php echo esc_attr(self::META_BLACKOUTS);?>" name="<?php echo esc_attr(self::META_BLACKOUTS);?>" hidden><?php echo esc_textarea($g(self::META_BLACKOUTS));?></textarea>
+		</div>
 		</div></div>
 		<?php
 	}
+	private static function schedule_row($r){$days=array(1=>'Δευτέρα',2=>'Τρίτη',3=>'Τετάρτη',4=>'Πέμπτη',5=>'Παρασκευή',6=>'Σάββατο',7=>'Κυριακή');?>
+		<div class="kwb-schedule-row"><select class="kwb-day"><?php foreach($days as$k=>$v):?><option value="<?php echo esc_attr($k);?>" <?php selected((int)$r['weekday'],$k);?>><?php echo esc_html($v);?></option><?php endforeach;?></select><input class="kwb-start" type="time" value="<?php echo esc_attr($r['start']);?>"><input class="kwb-end" type="time" value="<?php echo esc_attr($r['end']);?>"><input class="kwb-capacity" type="number" min="1" max="10000" value="<?php echo esc_attr($r['capacity']);?>" placeholder="Θέσεις"><button type="button" class="button-link-delete kwb-remove-row">Αφαίρεση</button></div>
+	<?php }
+	private static function blackout_row($date){?><div class="kwb-blackout-row"><input class="kwb-blackout-date" type="date" value="<?php echo esc_attr($date);?>"><button type="button" class="button-link-delete kwb-remove-row">Αφαίρεση</button></div><?php }
+
 
 	public static function save($id){
 		if(!current_user_can('edit_post',$id))return;
@@ -127,16 +158,27 @@ final class KWB_Booking {
 	public static function label($o){return wp_date('l d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'].'–'.$o['end'];}
 
 	public static function fields(){
-		global$product;if(!$product||!self::enabled($product->get_id()))return;$id=$product->get_id();$m=self::mode($id,'monthly');$s=self::mode($id,'single');if(!$m&&!$s)return;$months=$m?self::month_options($id):array();$occ=$s?self::future_occurrences($id):array();$def=$m?'monthly':'single';wp_nonce_field('kwb_cart_'.$id,'kwb_cart_nonce');?>
-		<div class="kwb-booking-fields" style="margin:1em 0;padding:14px;border:1px solid #e6e6e6;border-radius:8px">
-		<?php if($m&&$s):?><label for="kwb_booking_type"><strong><?php esc_html_e('Τρόπος συμμετοχής','kangiroo-workshop-bookings');?></strong></label><br>
-		<select name="kwb_booking_type" id="kwb_booking_type" style="width:100%;max-width:480px;margin:6px 0 12px"><option value="monthly"><?php echo esc_html(sprintf(__('Μηνιαία συμμετοχή — %s','kangiroo-workshop-bookings'),wp_strip_all_tags(wc_price(self::price($id,'monthly')))));?></option><option value="single"><?php echo esc_html(sprintf(__('Μεμονωμένη συμμετοχή — %s','kangiroo-workshop-bookings'),wp_strip_all_tags(wc_price(self::price($id,'single')))));?></option></select>
-		<?php else:?><input type="hidden" name="kwb_booking_type" id="kwb_booking_type" value="<?php echo esc_attr($def);?>"><?php endif;?>
-		<?php if($m):?><div id="kwb_month_wrap"><label for="kwb_month"><strong><?php esc_html_e('Επιλέξτε μήνα','kangiroo-workshop-bookings');?></strong></label><br><select name="kwb_month" id="kwb_month" style="width:100%;max-width:480px"><option value="">— Επιλογή —</option><?php foreach($months as$k=>$v):?><option value="<?php echo esc_attr($k);?>"><?php echo esc_html(sprintf('%s — %d συναντήσεις — %d θέσεις',$v['label'],$v['count'],$v['remaining']));?></option><?php endforeach;?></select><small style="display:block;margin-top:5px">Δεσμεύεται θέση σε όλες τις συναντήσεις του μήνα.</small></div><?php endif;?>
-		<?php if($s):?><div id="kwb_single_wrap" <?php echo'monthly'===$def?'style="display:none"':'';?>><label for="kwb_occurrence"><strong><?php esc_html_e('Επιλέξτε ημερομηνία & ώρα','kangiroo-workshop-bookings');?></strong></label><br><select name="kwb_occurrence" id="kwb_occurrence" style="width:100%;max-width:480px"><option value="">— Επιλογή —</option><?php foreach($occ as$o):$left=self::remaining($id,$o);if($left<1)continue;?><option value="<?php echo esc_attr($o['id']);?>"><?php echo esc_html(self::label($o).' — '.$left.' θέσεις');?></option><?php endforeach;?></select></div><?php endif;?>
-		<small style="display:block;margin-top:8px">Η ποσότητα αντιστοιχεί στον αριθμό παιδιών.</small></div>
-		<?php if($m&&$s):?><script>(function(){const t=document.getElementById('kwb_booking_type'),a=document.getElementById('kwb_month_wrap'),b=document.getElementById('kwb_single_wrap');function x(){const m=t.value==='monthly';a.style.display=m?'':'none';b.style.display=m?'none':'';}t.addEventListener('change',x);x();})();</script><?php endif;
+		global$product;if(!$product||!self::enabled($product->get_id()))return;$id=$product->get_id();$m=self::mode($id,'monthly');$s=self::mode($id,'single');if(!$m&&!$s)return;
+		$months=$m?self::month_options($id):array();$occ=$s?self::future_occurrences($id):array();$def=$m?'monthly':'single';wp_nonce_field('kwb_cart_'.$id,'kwb_cart_nonce');
+		$calendar=array('months'=>array(),'occurrences'=>array());
+		foreach($months as$k=>$v){$calendar['months'][$k]=array('label'=>$v['label'],'remaining'=>$v['remaining'],'count'=>$v['count']);}
+		foreach($occ as$o){$calendar['occurrences'][$o['date']][]=array('id'=>$o['id'],'date'=>$o['date'],'start'=>$o['start'],'end'=>$o['end'],'remaining'=>self::remaining($id,$o));}
+		?>
+		<div class="kwb-booking-fields" data-calendar="<?php echo esc_attr(wp_json_encode($calendar));?>">
+		<?php if($m&&$s):?><label for="kwb_booking_type"><strong>Τρόπος συμμετοχής</strong></label><select name="kwb_booking_type" id="kwb_booking_type"><option value="monthly"><?php echo esc_html('Μηνιαία συμμετοχή — '.wp_strip_all_tags(wc_price(self::price($id,'monthly'))));?></option><option value="single"><?php echo esc_html('Μεμονωμένη συμμετοχή — '.wp_strip_all_tags(wc_price(self::price($id,'single'))));?></option></select><?php else:?><input type="hidden" name="kwb_booking_type" id="kwb_booking_type" value="<?php echo esc_attr($def);?>"><?php endif;?>
+		<div class="kwb-calendar-heading"><strong id="kwb-calendar-label"><?php echo esc_html('monthly'===$def?'Επιλέξτε μήνα':'Επιλέξτε ημερομηνία');?></strong></div>
+		<input type="hidden" name="kwb_month" id="kwb_month" value="">
+		<input type="hidden" name="kwb_occurrence" id="kwb_occurrence" value="">
+		<div class="kwb-calendar-nav"><button type="button" class="kwb-prev" aria-label="Προηγούμενος μήνας">‹</button><span class="kwb-current-month"></span><button type="button" class="kwb-next" aria-label="Επόμενος μήνας">›</button></div>
+		<div class="kwb-calendar-grid"></div>
+		<div class="kwb-calendar-help">Οι γκρι ημέρες δεν έχουν εργαστήριο. Στις διαθέσιμες ημέρες φαίνονται οι θέσεις που απομένουν.</div>
+		<div class="kwb-month-select-wrap"><button type="button" class="button kwb-select-month">Επιλογή αυτού του μήνα</button></div>
+		<div class="kwb-selection-summary" aria-live="polite"></div>
+		<small>Η ποσότητα αντιστοιχεί στον αριθμό παιδιών.</small>
+		</div>
+		<?php
 	}
+
 
 	private static function nonce($id){$n=isset($_POST['kwb_cart_nonce'])?sanitize_text_field(wp_unslash($_POST['kwb_cart_nonce'])):'';return$n&&wp_verify_nonce($n,'kwb_cart_'.$id);}
 	private static function request($id){
@@ -155,7 +197,8 @@ final class KWB_Booking {
 	public static function cart_capacity(){if(!WC()->cart)return;$req=array();foreach(WC()->cart->get_cart()as$item){if(empty($item['kwb_booking']['occurrences']))continue;$id=$item['variation_id']?wp_get_post_parent_id($item['variation_id']):$item['product_id'];$q=max(1,absint($item['quantity']));foreach($item['kwb_booking']['occurrences']as$o){$k=$id.'|'.$o['id'];if(!isset($req[$k]))$req[$k]=array('id'=>$id,'o'=>self::hydrate($o),'q'=>0);$req[$k]['q']+=$q;}}foreach($req as$r)if($r['q']>self::remaining($r['id'],$r['o']))wc_add_notice('Η διαθεσιμότητα άλλαξε για '.self::label($r['o']).'.','error');}
 
 	public static function remaining($id,$o){return max(0,absint($o['capacity'])-self::booked($id,$o['id']));}
-	public static function booked($id,$oid){$orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold'),'limit'=>-1,'return'=>'ids'));$n=0;foreach($orders as$orid){$order=wc_get_order($orid);if(!$order)continue;foreach($order->get_items('line_item')as$item){$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();if((int)$pid!==(int)$id)continue;$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;foreach($list as$o)if(isset($o['id'])&&hash_equals((string)$oid,(string)$o['id'])){$n+=absint($item->get_quantity());break;}}}return$n;}
+	public static function occurrence_declined($item,$oid){$d=(array)$item->get_meta('_kwb_declined_occurrences',true);return in_array((string)$oid,array_map('strval',$d),true);}
+	public static function booked($id,$oid){$orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold'),'limit'=>-1,'return'=>'ids'));$n=0;foreach($orders as$orid){$order=wc_get_order($orid);if(!$order)continue;foreach($order->get_items('line_item')as$item){$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();if((int)$pid!==(int)$id||self::occurrence_declined($item,$oid))continue;$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;foreach($list as$o)if(isset($o['id'])&&hash_equals((string)$oid,(string)$o['id'])){$n+=absint($item->get_quantity());break;}}}return$n;}
 
 	public static function item_occurrences($item){$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);$out=array();if(is_array($list))foreach($list as$o)if(!empty($o['id'])&&self::date_ok($o['date']??'')&&self::time_ok($o['start']??'')&&self::time_ok($o['end']??''))$out[]=self::hydrate($o);return$out;}
 	public static function email_links($order,$admin,$plain,$email){if($admin||!$order instanceof WC_Order||in_array($order->get_status(),array('failed','cancelled','refunded'),true))return;self::calendar_links($order,$plain);}
@@ -165,7 +208,7 @@ final class KWB_Booking {
 	private static function sig($oid,$iid){$order=wc_get_order(absint($oid));$item=$order?$order->get_item(absint($iid)):false;$ctx=absint($oid).'|'.absint($iid);if($order&&$item)$ctx.='|'.$order->get_order_key().'|'.hash('sha256',(string)$item->get_meta('_kwb_occurrences',true));return hash_hmac('sha256',$ctx,wp_salt('auth'));}
 	private static function ics_url($oid,$iid){return add_query_arg(array('kwb_ics'=>1,'order_id'=>absint($oid),'item_id'=>absint($iid),'sig'=>self::sig($oid,$iid)),home_url('/'));}
 	public static function ics_download(){// phpcs:disable WordPress.Security.NonceVerification.Recommended -- HMAC-authenticated read-only endpoint.
-		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Kangiroo Workshop Bookings//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc($item->get_name());$ics[]='DESCRIPTION:'.self::esc(sprintf('Κράτηση WooCommerce #%s',$order->get_order_number()));$ics[]='LOCATION:'.self::esc(get_bloginfo('name'));$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="kangiroo-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		if(empty($_GET['kwb_ics']))return;$oid=isset($_GET['order_id'])?absint($_GET['order_id']):0;$iid=isset($_GET['item_id'])?absint($_GET['item_id']):0;$sig=isset($_GET['sig'])?sanitize_text_field(wp_unslash($_GET['sig'])):'';if(!$oid||!$iid||!hash_equals(self::sig($oid,$iid),$sig)){status_header(403);exit;}$order=wc_get_order($oid);$item=$order?$order->get_item($iid):false;if(!$item){status_header(404);exit;}$os=self::item_occurrences($item);if(!$os){status_header(404);exit;}$utc=new DateTimeZone('UTC');$host=(string)wp_parse_url(home_url(),PHP_URL_HOST);$ics=array('BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//e-iT//Kangiroo Workshop Bookings//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH');foreach($os as$i=>$o){$ics[]='BEGIN:VEVENT';$ics[]='UID:'.self::esc(sprintf('kwb-%d-%d-%d@%s',$oid,$iid,$i,$host));$ics[]='DTSTAMP:'.gmdate('Ymd\THis\Z');$ics[]='DTSTART:'.$o['start_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='DTEND:'.$o['end_dt']->setTimezone($utc)->format('Ymd\THis\Z');$ics[]='SUMMARY:'.self::esc($item->get_name());$ics[]='DESCRIPTION:'.self::esc(sprintf('Κράτηση WooCommerce #%s',$order->get_order_number()));$ics[]='LOCATION:'.self::esc(get_bloginfo('name'));$ics[]='BEGIN:VALARM';$ics[]='TRIGGER:-PT4H';$ics[]='ACTION:DISPLAY';$ics[]='DESCRIPTION:'.self::esc('Υπενθύμιση εργαστηρίου σε 4 ώρες');$ics[]='END:VALARM';$ics[]='END:VEVENT';}$ics[]='END:VCALENDAR';nocache_headers();header('X-Content-Type-Options: nosniff');header('Content-Type: text/calendar; charset=utf-8');header('Content-Disposition: attachment; filename="kangiroo-booking-'.$oid.'-'.$iid.'.ics"');// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo implode("\r\n",$ics)."\r\n";// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;}
 	private static function esc($v){return str_replace(array('\\',';',',',"\r\n","\r","\n"),array('\\\\','\\;','\\,','\\n','\\n','\\n'),(string)$v);}

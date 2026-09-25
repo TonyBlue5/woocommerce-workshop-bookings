@@ -61,3 +61,14 @@ A workshop product can enable either or both purchase modes:
 Both modes share the same occurrence capacity. If a Tuesday session has 10 seats and 7 monthly participants already include that Tuesday, only 3 single-session seats remain for that date.
 
 Weekly schedules use ISO weekdays (1=Monday … 7=Sunday), with optional blackout dates for holidays or cancelled classes. Monthly iCalendar exports contain all booked occurrences.
+
+
+## v0.4 calendar and attendance flow
+
+The storefront uses a visual month calendar instead of date dropdowns. Days that do not belong to a workshop schedule are disabled, available workshop days show remaining seats, and single participation selects a specific occurrence.
+
+The product editor uses structured schedule rows (weekday, start, end, capacity) and date-picker rows for cancellations/holidays.
+
+Four hours before each paid occurrence, WordPress schedules an attendance reminder email with signed **YES / NO** links. A **NO** response releases that occurrence's seat without cancelling the rest of a monthly booking. Calendar exports also include a four-hour display reminder.
+
+Native Google Calendar attendee RSVP requires a connected organizer Google Calendar account; the plugin's signed email RSVP works independently and is the fallback for Apple Calendar and non-Google users.

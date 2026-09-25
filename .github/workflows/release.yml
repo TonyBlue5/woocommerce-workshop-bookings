@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag, e.g. v0.3.1'
+        description: 'Version tag, e.g. v0.4.0'
         required: true
         type: string
 
@@ -31,6 +31,7 @@ jobs:
           php -l kangiroo-workshop-bookings.php
           php -l includes/class-kwb-booking.php
           php -l includes/class-kwb-updater.php
+          php -l includes/class-kwb-rsvp.php
       - name: Security preflight
         run: |
           set -euo pipefail
@@ -50,9 +51,10 @@ jobs:
       - name: Build plugin ZIP
         run: |
           set -euo pipefail
-          mkdir -p build/kangiroo-workshop-bookings/includes
+          mkdir -p build/kangiroo-workshop-bookings/includes build/kangiroo-workshop-bookings/assets
           cp kangiroo-workshop-bookings.php readme.txt LICENSE build/kangiroo-workshop-bookings/
           cp includes/*.php build/kangiroo-workshop-bookings/includes/
+          cp assets/* build/kangiroo-workshop-bookings/assets/
           cd build
           zip -qr kangiroo-workshop-bookings.zip kangiroo-workshop-bookings
           unzip -tq kangiroo-workshop-bookings.zip

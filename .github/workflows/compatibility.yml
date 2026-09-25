@@ -39,6 +39,7 @@ jobs:
           php -l kangiroo-workshop-bookings.php
           php -l includes/class-kwb-booking.php
           php -l includes/class-kwb-updater.php
+          php -l includes/class-kwb-rsvp.php
       - name: Install latest WordPress and WooCommerce
         run: |
           set -euo pipefail
@@ -47,9 +48,10 @@ jobs:
           wp config create --path=/tmp/kwb-test --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
           wp core install --path=/tmp/kwb-test --url=http://localhost --title=KWBTest --admin_user=testadmin --admin_password='Strong-Test-Password-2026!' --admin_email=test@example.com --skip-email
           wp plugin install woocommerce --activate --path=/tmp/kwb-test
-          mkdir -p /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/includes
+          mkdir -p /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/includes /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/assets
           cp kangiroo-workshop-bookings.php readme.txt /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/
           cp includes/*.php /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/includes/
+          cp assets/* /tmp/kwb-test/wp-content/plugins/kangiroo-workshop-bookings/assets/
           wp plugin activate kangiroo-workshop-bookings --path=/tmp/kwb-test
       - name: Verify integration
         run: |
@@ -57,4 +59,5 @@ jobs:
           wp plugin status kangiroo-workshop-bookings --path=/tmp/kwb-test
           wp eval "echo class_exists('KWB_Booking') ? 'booking-loaded' : 'missing';" --path=/tmp/kwb-test | grep booking-loaded
           wp eval "echo class_exists('KWB_GitHub_Updater') ? 'updater-loaded' : 'missing';" --path=/tmp/kwb-test | grep updater-loaded
+          wp eval "echo class_exists('KWB_RSVP') ? 'rsvp-loaded' : 'missing';" --path=/tmp/kwb-test | grep rsvp-loaded
           wp eval "echo defined('WC_VERSION') ? WC_VERSION : 'missing';" --path=/tmp/kwb-test

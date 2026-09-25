@@ -42,4 +42,11 @@ KWB_Booking::save($id);
 kwb_assert($before===get_post_meta($id,'_kwb_weekly_schedule',true),'admin save accepted without nonce');
 
 kwb_assert(class_exists('KWB_GitHub_Updater'),'secure updater missing');
+kwb_assert(class_exists('KWB_RSVP'),'RSVP engine missing');
+
+// A declined occurrence must immediately free its seat.
+$item = $order->get_item($item_id);
+$item->update_meta_data('_kwb_declined_occurrences',array((string)$first['id']));
+$item->save();
+kwb_assert(2===KWB_Booking::remaining($id,$first),'declined occurrence did not release shared capacity');
 echo "security-smoke-ok\n";
