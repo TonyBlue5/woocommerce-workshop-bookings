@@ -53,6 +53,15 @@ final class KWB_RSVP {
 		),home_url('/'));
 	}
 
+	private static function render_template($template,$order,$item,$occ){
+		return strtr((string)$template,array(
+			'{{workshop}}'=>$item->get_name(),
+			'{{date}}'=>wp_date('d/m/Y',$occ['start_dt']->getTimestamp(),wp_timezone()),
+			'{{time}}'=>$occ['start'],
+			'{{order_number}}'=>$order->get_order_number(),
+		));
+	}
+
 	public static function send_reminder($order_id,$item_id,$occurrence_id){
 		$order=wc_get_order($order_id);if(!$order||in_array($order->get_status(),array('cancelled','refunded','failed'),true))return;
 		$item=$order->get_item($item_id);if(!$item)return;
@@ -61,11 +70,12 @@ final class KWB_RSVP {
 		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
-		$subject=sprintf('Υπενθύμιση: %s — %s στις %s',$item->get_name(),date_i18n('d/m/Y',strtotime($occ['date'])),$occ['start']);
-		$message='<p>Υπενθύμιση για το εργαστήριο <strong>'.esc_html($item->get_name()).'</strong> στις <strong>'.esc_html(date_i18n('d/m/Y',strtotime($occ['date'])).' '.$occ['start']).'</strong>.</p>';
-		$message.='<p>Θα μπορέσετε τελικά να έρθετε;</p>';
-		$message.='<p><a href="'.esc_url($yes).'" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#fff;text-decoration:none;border-radius:4px">ΝΑΙ, θα έρθουμε</a> ';
-		$message.='<a href="'.esc_url($no).'" style="display:inline-block;padding:10px 18px;background:#b32d2e;color:#fff;text-decoration:none;border-radius:4px">ΟΧΙ, δεν θα έρθουμε</a></p>';
+		$subject=self::render_template(KWB_Settings::get('reminder_subject_template','Υπενθύμιση: {{workshop}} — {{date}} στις {{time}}'),$order,$item,$occ);
+		$copy=self::render_template(KWB_Settings::get('reminder_message_template','Υπενθύμιση για το εργαστήριο {{workshop}} στις {{date}} {{time}}. Θα μπορέσετε τελικά να έρθετε;'),$order,$item,$occ);
+		$yes_label=(string)KWB_Settings::get('rsvp_yes_label','ΝΑΙ, θα έρθουμε');$no_label=(string)KWB_Settings::get('rsvp_no_label','ΟΧΙ, δεν θα έρθουμε');
+		$message='<p>'.nl2br(esc_html($copy)).'</p>';
+		$message.='<p><a href="'.esc_url($yes).'" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#fff;text-decoration:none;border-radius:4px">'.esc_html($yes_label).'</a> ';
+		$message.='<a href="'.esc_url($no).'" style="display:inline-block;padding:10px 18px;background:#b32d2e;color:#fff;text-decoration:none;border-radius:4px">'.esc_html($no_label).'</a></p>';
 		add_filter('wp_mail_content_type',array(__CLASS__,'html_mail'));
 		wp_mail($to,$subject,$message);
 		remove_filter('wp_mail_content_type',array(__CLASS__,'html_mail'));
@@ -87,8 +97,13 @@ final class KWB_RSVP {
 		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
 		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo 'Η προθεσμία αλλαγής απάντησης έχει λήξει.';exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
-		$yes=array_values(array_diff($yes,array($occ)));$no=array_values(array_diff($no,array($occ)));
-		if('yes'===$answer)$yes[]=$occ;else if(KWB_Settings::get('release_on_no',1))$no[]=$occ;
+		$was_declined=in_array((string)$occ,array_map('strval',$no),true);
+		if('yes'===$answer&&$was_declined&&KWB_Settings::get('release_on_no',1)){
+			$qty=max(1,absint($item->get_quantity()));
+			if($qty>KWB_Booking::remaining($pid,$selected)){status_header(409);echo 'Η θέση έχει ήδη καλυφθεί από άλλη κράτηση. Επικοινωνήστε με τον διοργανωτή.';exit;}
+		}
+		$yes=array_values(array_diff(array_map('strval',$yes),array((string)$occ)));$no=array_values(array_diff(array_map('strval',$no),array((string)$occ)));
+		if('yes'===$answer)$yes[]=(string)$occ;else$no[]=(string)$occ;
 		$item->update_meta_data('_kwb_confirmed_occurrences',array_values(array_unique($yes)));
 		$item->update_meta_data('_kwb_declined_occurrences',array_values(array_unique($no)));
 		$item->save();
