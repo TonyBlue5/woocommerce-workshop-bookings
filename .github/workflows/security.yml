@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, api-free-commercial-v0.6.0]
+    branches: [main, monthly-only-i18n-v0.6.3]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
