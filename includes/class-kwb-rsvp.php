@@ -93,7 +93,7 @@ final class KWB_RSVP {
 		$item->update_meta_data('_kwb_declined_occurrences',array_values(array_unique($no)));
 		$item->save();
 		nocache_headers();status_header(200);
-		echo '<!doctype html><html><meta charset="utf-8"><title>Kangiroo</title><body style="font-family:Arial,sans-serif;text-align:center;padding:50px">';
+		echo '<!doctype html><html><meta charset="utf-8"><title>Workshop Bookings</title><body style="font-family:Arial,sans-serif;text-align:center;padding:50px">';
 		echo '<h1>'.('yes'===$answer?'Ευχαριστούμε! Σας περιμένουμε.':'Η θέση σας ελευθερώθηκε. Ευχαριστούμε που μας ενημερώσατε.').'</h1>';
 		echo '</body></html>';// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		exit;
