@@ -10,6 +10,7 @@ final class KWB_Booking {
 	const META_SCHEDULE='_kwb_weekly_schedule';
 	const META_BLACKOUTS='_kwb_blackouts';
 	const META_HORIZON='_kwb_horizon_months';
+	const META_MAX_MONTHS='_kwb_max_booking_months';
 	const META_REMINDER_OVERRIDE='_kwb_reminder_minutes_override';
 	const META_RSVP_OVERRIDE='_kwb_rsvp_override';
 	const META_BOOKING_CUTOFF='_kwb_booking_cutoff_minutes';
@@ -55,6 +56,9 @@ final class KWB_Booking {
 			'unavailable_month'=>KWB_I18n::t('unavailable_month'),'selected_date'=>KWB_I18n::t('selected_date'),'place'=>KWB_I18n::t('place'),'places'=>KWB_I18n::t('places'),
 			'previous_month'=>KWB_I18n::t('previous_month'),'next_month'=>KWB_I18n::t('next_month'),'greek'=>KWB_I18n::is_greek(),
 			'selected_month'=>KWB_I18n::t('selected_month'),'participation_count_singular'=>KWB_I18n::t('participation_count_singular'),'participation_count_plural'=>KWB_I18n::t('participation_count_plural'),
+			'selected_months'=>KWB_I18n::t('selected_months'),'monthly_date_blocked'=>KWB_I18n::t('monthly_date_blocked'),
+			'max_months_hint'=>KWB_I18n::t('max_months_hint'),'max_months_reached'=>KWB_I18n::t('max_months_reached'),
+			'month_singular'=>KWB_I18n::t('month_singular'),'month_plural'=>KWB_I18n::t('month_plural'),'remove_month'=>KWB_I18n::t('remove_month'),
 		));
 		wp_enqueue_style('kwb-calendar',plugins_url('../assets/kwb-calendar.css',__FILE__),array(),KWB_VERSION);
 	}
@@ -78,6 +82,7 @@ final class KWB_Booking {
 		woocommerce_wp_checkbox(array('id'=>self::META_SINGLE,'label'=>KWB_I18n::t('single_participation'),'value'=>$g(self::META_SINGLE)));
 		woocommerce_wp_text_input(array('id'=>self::META_SINGLE_PRICE,'label'=>KWB_I18n::t('single_price'),'value'=>$g(self::META_SINGLE_PRICE),'type'=>'number','custom_attributes'=>array('min'=>'0','step'=>'0.01')));
 		woocommerce_wp_text_input(array('id'=>self::META_HORIZON,'label'=>KWB_I18n::t('horizon_months'),'value'=>$g(self::META_HORIZON,KWB_Settings::get('default_horizon_months',3)),'type'=>'number','custom_attributes'=>array('min'=>'1','max'=>'12','step'=>'1')));
+		woocommerce_wp_text_input(array('id'=>self::META_MAX_MONTHS,'label'=>KWB_I18n::t('max_booking_months'),'description'=>KWB_I18n::t('max_booking_months_help'),'value'=>$g(self::META_MAX_MONTHS,1),'type'=>'number','custom_attributes'=>array('min'=>'1','max'=>'12','step'=>'1')));
 		woocommerce_wp_text_input(array('id'=>self::META_REMINDER_OVERRIDE,'label'=>KWB_I18n::t('reminder_override'),'description'=>KWB_I18n::t('blank_general'),'value'=>$g(self::META_REMINDER_OVERRIDE),'type'=>'number','custom_attributes'=>array('min'=>'5','max'=>'10080','step'=>'1')));
 		woocommerce_wp_select(array('id'=>self::META_RSVP_OVERRIDE,'label'=>KWB_I18n::t('rsvp_workshop'),'value'=>$g(self::META_RSVP_OVERRIDE,'inherit'),'options'=>array('inherit'=>KWB_I18n::t('inherit_global'),'on'=>KWB_I18n::t('enabled'),'off'=>KWB_I18n::t('disabled'))));
 		woocommerce_wp_text_input(array('id'=>self::META_BOOKING_CUTOFF,'label'=>KWB_I18n::t('booking_cutoff'),'description'=>KWB_I18n::t('cutoff_help'),'value'=>$g(self::META_BOOKING_CUTOFF),'type'=>'number','custom_attributes'=>array('min'=>'0','max'=>'10080','step'=>'1')));
@@ -116,7 +121,8 @@ final class KWB_Booking {
 		if(!$n||!wp_verify_nonce($n,'kwb_save_'.$id))return;
 		foreach(array(self::META_ENABLED,self::META_MONTHLY,self::META_SINGLE) as $k)update_post_meta($id,$k,isset($_POST[$k])?'yes':'no');
 		foreach(array(self::META_MONTHLY_PRICE,self::META_SINGLE_PRICE) as $k){$v=isset($_POST[$k])?wc_format_decimal(wp_unslash($_POST[$k])):'';update_post_meta($id,$k,$v);}
-		$h=isset($_POST[self::META_HORIZON])?absint($_POST[self::META_HORIZON]):3; update_post_meta($id,self::META_HORIZON,max(1,min(12,$h)));
+		$h=isset($_POST[self::META_HORIZON])?absint($_POST[self::META_HORIZON]):3;$h=max(1,min(12,$h));update_post_meta($id,self::META_HORIZON,$h);
+		$mm=isset($_POST[self::META_MAX_MONTHS])?absint($_POST[self::META_MAX_MONTHS]):1;update_post_meta($id,self::META_MAX_MONTHS,max(1,min($h,$mm)));
 		foreach(array(self::META_REMINDER_OVERRIDE,self::META_BOOKING_CUTOFF,self::META_MAX_QTY)as$k){
 			$v=isset($_POST[$k])?trim((string)wp_unslash($_POST[$k])):'';update_post_meta($id,$k,''===$v?'':absint($v));
 		}
@@ -148,6 +154,11 @@ final class KWB_Booking {
 	public static function rsvp_enabled($id){$v=(string)get_post_meta($id,self::META_RSVP_OVERRIDE,true);if('on'===$v)return true;if('off'===$v)return false;return(bool)KWB_Settings::get('rsvp_enabled',1);}
 	public static function booking_cutoff_minutes($id){return absint(get_post_meta($id,self::META_BOOKING_CUTOFF,true));}
 	public static function max_qty($id){return absint(get_post_meta($id,self::META_MAX_QTY,true));}
+	public static function max_booking_months($id){
+		$h=max(1,min(12,absint(get_post_meta($id,self::META_HORIZON,true)?:KWB_Settings::get('default_horizon_months',3))));
+		$v=absint(get_post_meta($id,self::META_MAX_MONTHS,true)?:1);
+		return max(1,min($h,$v));
+	}
 	public static function location($id){
 		$v=trim((string)get_post_meta($id,self::META_LOCATION,true));if($v)return$v;
 		$v=trim((string)KWB_Settings::get('calendar_location',''));if($v)return$v;
@@ -217,7 +228,7 @@ final class KWB_Booking {
 	public static function fields(){
 		global$product;if(!$product||!self::enabled($product->get_id()))return;$id=$product->get_id();$m=self::mode($id,'monthly');$s=self::mode($id,'single');if(!$m&&!$s)return;
 		$months=$m?self::month_options($id):array();$occ=($m||$s)?self::future_occurrences($id):array();$def=$m?'monthly':'single';wp_nonce_field('kwb_cart_'.$id,'kwb_cart_nonce');
-		$calendar=array('months'=>array(),'occurrences'=>array());
+		$calendar=array('months'=>array(),'occurrences'=>array(),'maxMonths'=>self::max_booking_months($id));
 		foreach($months as$k=>$v){$calendar['months'][$k]=array('label'=>$v['label'],'remaining'=>$v['remaining'],'count'=>$v['count']);}
 		foreach($occ as$o){$calendar['occurrences'][$o['date']][]=array('id'=>$o['id'],'date'=>$o['date'],'start'=>$o['start'],'end'=>$o['end'],'remaining'=>self::remaining($id,$o));}
 		?>
@@ -225,6 +236,7 @@ final class KWB_Booking {
 		<?php if($m&&$s):?><label for="kwb_booking_type"><strong><?php echo esc_html(KWB_I18n::t('participation_type'));?></strong></label><select name="kwb_booking_type" id="kwb_booking_type"><option value="monthly"><?php echo esc_html(KWB_I18n::t('monthly_participation').' — '.wp_strip_all_tags(wc_price(self::price($id,'monthly'))));?></option><option value="single"><?php echo esc_html(KWB_I18n::t('single_participation').' — '.wp_strip_all_tags(wc_price(self::price($id,'single'))));?></option></select><?php else:?><input type="hidden" name="kwb_booking_type" id="kwb_booking_type" value="<?php echo esc_attr($def);?>"><?php endif;?>
 		<div class="kwb-calendar-heading"><strong id="kwb-calendar-label"><?php echo esc_html('monthly'===$def?KWB_I18n::t('choose_month'):KWB_I18n::t('choose_date'));?></strong></div>
 		<input type="hidden" name="kwb_month" id="kwb_month" value="">
+		<input type="hidden" name="kwb_months" id="kwb_months" value="">
 		<input type="hidden" name="kwb_occurrence" id="kwb_occurrence" value="">
 		<div class="kwb-calendar-nav"><button type="button" class="kwb-prev" aria-label="<?php echo esc_attr(KWB_I18n::t('previous_month'));?>">‹</button><span class="kwb-current-month"></span><button type="button" class="kwb-next" aria-label="<?php echo esc_attr(KWB_I18n::t('next_month'));?>">›</button></div>
 		<div class="kwb-calendar-grid"></div>
@@ -232,6 +244,7 @@ final class KWB_Booking {
 		<div class="kwb-month-action">
 			<div class="kwb-month-select-wrap"><button type="button" class="button kwb-select-month"><?php echo esc_html(KWB_I18n::t('choose_this_month'));?></button></div>
 			<div class="kwb-selection-summary" aria-live="polite"></div>
+			<div class="kwb-month-limit" aria-live="polite"></div>
 		</div>
 		<small><?php echo esc_html(KWB_I18n::t('quantity_participants'));?></small>
 		</div>
@@ -241,18 +254,66 @@ final class KWB_Booking {
 
 	private static function nonce($id){$n=isset($_POST['kwb_cart_nonce'])?sanitize_text_field(wp_unslash($_POST['kwb_cart_nonce'])):'';return$n&&wp_verify_nonce($n,'kwb_cart_'.$id);}
 	private static function request($id){
-		$type=isset($_POST['kwb_booking_type'])?sanitize_key(wp_unslash($_POST['kwb_booking_type'])):'';if(!self::mode($id,$type))return new WP_Error('kwb_type',KWB_I18n::t('type_unavailable'));
-		if('monthly'===$type){$m=isset($_POST['kwb_month'])?sanitize_text_field(wp_unslash($_POST['kwb_month'])):'';$opts=self::month_options($id);if(empty($opts[$m]['occurrences']))return new WP_Error('kwb_month',KWB_I18n::t('select_available_month'));return array('type'=>'monthly','month'=>$m,'price'=>self::price($id,'monthly'),'occurrences'=>array_values($opts[$m]['occurrences']));}
-		$oid=isset($_POST['kwb_occurrence'])?sanitize_text_field(wp_unslash($_POST['kwb_occurrence'])):'';$all=self::future_occurrences($id);if(empty($all[$oid]))return new WP_Error('kwb_occ',KWB_I18n::t('select_available_date'));return array('type'=>'single','month'=>'','price'=>self::price($id,'single'),'occurrences'=>array($all[$oid]));
+		$type=isset($_POST['kwb_booking_type'])?sanitize_key(wp_unslash($_POST['kwb_booking_type'])):'';
+		if(!self::mode($id,$type))return new WP_Error('kwb_type',KWB_I18n::t('type_unavailable'));
+		if('monthly'===$type){
+			$raw=isset($_POST['kwb_months'])?sanitize_text_field(wp_unslash($_POST['kwb_months'])):'';
+			$months=array_values(array_unique(array_filter(array_map('trim',explode(',',$raw)),static function($m){return(bool)preg_match('/^\d{4}-\d{2}$/',$m);})));
+			if(!$months){
+				$legacy=isset($_POST['kwb_month'])?sanitize_text_field(wp_unslash($_POST['kwb_month'])):'';
+				if(preg_match('/^\d{4}-\d{2}$/',$legacy))$months=array($legacy);
+			}
+			$max=self::max_booking_months($id);
+			if(!$months)return new WP_Error('kwb_month',KWB_I18n::t('select_available_month'));
+			if(count($months)>$max)return new WP_Error('kwb_month_limit',KWB_I18n::t('max_months_reached',array('max'=>$max,'month_word'=>1===$max?KWB_I18n::t('month_singular'):KWB_I18n::t('month_plural'))));
+			sort($months,SORT_STRING);
+			$opts=self::month_options($id);$occurrences=array();$seen=array();
+			foreach($months as$m){
+				if(empty($opts[$m]['occurrences']))return new WP_Error('kwb_month',KWB_I18n::t('select_available_month'));
+				foreach($opts[$m]['occurrences']as$o){
+					if(isset($seen[$o['id']]))continue;$seen[$o['id']]=1;$occurrences[]=$o;
+				}
+			}
+			return array('type'=>'monthly','month'=>$months[0],'months'=>$months,'price'=>self::price($id,'monthly')*count($months),'occurrences'=>$occurrences);
+		}
+		$oid=isset($_POST['kwb_occurrence'])?sanitize_text_field(wp_unslash($_POST['kwb_occurrence'])):'';
+		$all=self::future_occurrences($id);
+		if(empty($all[$oid]))return new WP_Error('kwb_occ',KWB_I18n::t('select_available_date'));
+		return array('type'=>'single','month'=>'','months'=>array(),'price'=>self::price($id,'single'),'occurrences'=>array($all[$oid]));
 	}
 
 	public static function validate($passed,$product_id,$qty,$variation_id=0,$vars=array(),$data=array()){
 		$id=$variation_id?wp_get_post_parent_id($variation_id):$product_id;if(!self::enabled($id))return$passed;if(!self::nonce($id)){wc_add_notice(KWB_I18n::t('form_expired'),'error');return false;}$b=self::request($id);if(is_wp_error($b)){wc_add_notice($b->get_error_message(),'error');return false;}$q=max(1,absint($qty));$max=self::max_qty($id);if($max&&$q>$max){wc_add_notice(KWB_I18n::t('max_limit',array('max'=>$max)),'error');return false;}$cut=self::booking_cutoff_minutes($id);foreach($b['occurrences']as$o){if($cut&&$o['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){wc_add_notice(KWB_I18n::t('bookings_closed',array('slot'=>self::label($o))),'error');return false;}if($q>self::remaining($id,$o)){wc_add_notice(KWB_I18n::t('not_enough_places',array('slot'=>self::label($o))),'error');return false;}}return$passed;
 	}
-	public static function cart_data($data,$product_id,$variation_id){$id=$variation_id?wp_get_post_parent_id($variation_id):$product_id;if(!self::enabled($id)||!self::nonce($id))return$data;$b=self::request($id);if(is_wp_error($b))return$data;$os=array();foreach($b['occurrences']as$o)$os[]=array('id'=>$o['id'],'date'=>$o['date'],'start'=>$o['start'],'end'=>$o['end'],'capacity'=>(int)$o['capacity']);$data['kwb_booking']=array('type'=>$b['type'],'month'=>$b['month'],'price'=>(float)$b['price'],'occurrences'=>$os);$data['kwb_unique']=md5(wp_json_encode($data['kwb_booking']).'|'.microtime(true));return$data;}
+	public static function cart_data($data,$product_id,$variation_id){$id=$variation_id?wp_get_post_parent_id($variation_id):$product_id;if(!self::enabled($id)||!self::nonce($id))return$data;$b=self::request($id);if(is_wp_error($b))return$data;$os=array();foreach($b['occurrences']as$o)$os[]=array('id'=>$o['id'],'date'=>$o['date'],'start'=>$o['start'],'end'=>$o['end'],'capacity'=>(int)$o['capacity']);$data['kwb_booking']=array('type'=>$b['type'],'month'=>$b['month'],'months'=>$b['months']??array(),'price'=>(float)$b['price'],'occurrences'=>$os);$data['kwb_unique']=md5(wp_json_encode($data['kwb_booking']).'|'.microtime(true));return$data;}
 	public static function prices($cart){if(is_admin()&&!defined('DOING_AJAX'))return;foreach($cart->get_cart()as$item)if(isset($item['kwb_booking']['price']))$item['data']->set_price((float)$item['kwb_booking']['price']);}
-	public static function display_cart_data($rows,$item){if(empty($item['kwb_booking']))return$rows;$b=$item['kwb_booking'];$rows[]=array('key'=>KWB_I18n::t('participation'),'value'=>'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'));if('monthly'===$b['type']){$rows[]=array('key'=>KWB_I18n::t('month'),'value'=>esc_html($b['month']));$rows[]=array('key'=>KWB_I18n::t('sessions'),'value'=>esc_html((string)count($b['occurrences'])));}else{$rows[]=array('key'=>KWB_I18n::t('date'),'value'=>esc_html(self::label(self::hydrate($b['occurrences'][0]))));}return$rows;}
-	public static function order_meta($item,$key,$values,$order){if(empty($values['kwb_booking']))return;$b=$values['kwb_booking'];$item->add_meta_data('_kwb_booking_type',$b['type'],true);$item->add_meta_data('_kwb_booking_month',$b['month'],true);$item->add_meta_data('_kwb_occurrences',wp_json_encode($b['occurrences']),true);$item->add_meta_data(KWB_I18n::t('participation_type_meta'),'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'),true);if('monthly'===$b['type']){$item->add_meta_data(KWB_I18n::t('month'),$b['month'],true);$item->add_meta_data(KWB_I18n::t('sessions'),count($b['occurrences']),true);}else{$o=self::hydrate($b['occurrences'][0]);$item->add_meta_data(KWB_I18n::t('workshop_date'),wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()),true);$item->add_meta_data(KWB_I18n::t('workshop_time'),$o['start'].'–'.$o['end'],true);}}
+	public static function display_cart_data($rows,$item){
+		if(empty($item['kwb_booking']))return$rows;$b=$item['kwb_booking'];
+		$rows[]=array('key'=>KWB_I18n::t('participation'),'value'=>'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'));
+		if('monthly'===$b['type']){
+			$months=!empty($b['months'])?(array)$b['months']:array($b['month']);
+			$rows[]=array('key'=>count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),'value'=>esc_html(implode(', ',$months)));
+			$rows[]=array('key'=>KWB_I18n::t('sessions'),'value'=>esc_html((string)count($b['occurrences'])));
+		}else{$rows[]=array('key'=>KWB_I18n::t('date'),'value'=>esc_html(self::label(self::hydrate($b['occurrences'][0]))));}
+		return$rows;
+	}
+	public static function order_meta($item,$key,$values,$order){
+		if(empty($values['kwb_booking']))return;$b=$values['kwb_booking'];
+		$item->add_meta_data('_kwb_booking_type',$b['type'],true);
+		$item->add_meta_data('_kwb_booking_month',$b['month'],true);
+		$item->add_meta_data('_kwb_booking_months',wp_json_encode($b['months']??array()),true);
+		$item->add_meta_data('_kwb_occurrences',wp_json_encode($b['occurrences']),true);
+		$item->add_meta_data(KWB_I18n::t('participation_type_meta'),'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'),true);
+		if('monthly'===$b['type']){
+			$months=!empty($b['months'])?(array)$b['months']:array($b['month']);
+			$item->add_meta_data(count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),implode(', ',$months),true);
+			$item->add_meta_data(KWB_I18n::t('sessions'),count($b['occurrences']),true);
+		}else{
+			$o=self::hydrate($b['occurrences'][0]);
+			$item->add_meta_data(KWB_I18n::t('workshop_date'),wp_date('d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()),true);
+			$item->add_meta_data(KWB_I18n::t('workshop_time'),$o['start'].'–'.$o['end'],true);
+		}
+	}
 	public static function cart_capacity(){if(!WC()->cart)return;$req=array();foreach(WC()->cart->get_cart()as$item){if(empty($item['kwb_booking']['occurrences']))continue;$id=$item['variation_id']?wp_get_post_parent_id($item['variation_id']):$item['product_id'];$q=max(1,absint($item['quantity']));foreach($item['kwb_booking']['occurrences']as$o){$k=$id.'|'.$o['id'];if(!isset($req[$k]))$req[$k]=array('id'=>$id,'o'=>self::hydrate($o),'q'=>0);$req[$k]['q']+=$q;}}foreach($req as$r)if($r['q']>self::remaining($r['id'],$r['o']))wc_add_notice(KWB_I18n::t('availability_changed',array('slot'=>self::label($r['o']))),'error');}
 
 	public static function remaining($id,$o){return max(0,absint($o['capacity'])-self::booked($id,$o['id']));}
