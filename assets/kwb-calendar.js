@@ -9,11 +9,12 @@
   });
 
   function init(root){
-    let data={months:{},occurrences:{}};
+    let data={months:{},occurrences:{},maxMonths:1};
     try{data=JSON.parse(root.dataset.calendar||'{}');}catch(e){}
 
     const type=root.querySelector('#kwb_booking_type');
     const monthInput=root.querySelector('#kwb_month');
+    const monthsInput=root.querySelector('#kwb_months');
     const occInput=root.querySelector('#kwb_occurrence');
     const grid=root.querySelector('.kwb-calendar-grid');
     const title=root.querySelector('.kwb-current-month');
@@ -23,6 +24,9 @@
     const monthBtn=root.querySelector('.kwb-select-month');
     const monthWrap=root.querySelector('.kwb-month-select-wrap');
     const summary=root.querySelector('.kwb-selection-summary');
+    const monthLimit=root.querySelector('.kwb-month-limit');
+    const maxMonths=Math.max(1,parseInt(data.maxMonths||1,10));
+    const selectedMonths=new Set();
 
     let keys=[...new Set([
       ...Object.keys(data.months||{}),
@@ -45,12 +49,50 @@
       return months[m]+' '+p[0];
     }
     function formatDate(date){return date.split('-').reverse().join('/');}
+    function monthWord(n){return n===1?(i18n.month_singular||'month'):(i18n.month_plural||'months');}
+    function participationWord(n){return n===1?(i18n.participation_count_singular||'participation'):(i18n.participation_count_plural||'participations');}
+    function setMessage(text,warning){
+      summary.textContent=text||'';
+      summary.classList.toggle('is-warning',!!warning);
+    }
+    function updateHiddenMonths(){
+      const list=[...selectedMonths].sort();
+      if(monthsInput)monthsInput.value=list.join(',');
+      if(monthInput)monthInput.value=list[0]||'';
+    }
+    function totalParticipations(){
+      return [...selectedMonths].reduce((total,key)=>{
+        const info=data.months&&data.months[key];
+        return total+(info?parseInt(info.count||0,10):0);
+      },0);
+    }
+    function updateMonthSummary(){
+      const list=[...selectedMonths].sort();
+      if(!list.length){setMessage('',false);return;}
+      const labels=list.map(k=>(data.months[k]&&data.months[k].label)||monthName(k));
+      const total=totalParticipations();
+      let template;
+      if(list.length===1){
+        template=i18n.selected_month||'Selected {{month}} with a total of {{count}} {{participation_word}} per participant.';
+        setMessage(template.replace('{{month}}',labels[0]).replace('{{count}}',total).replace('{{participation_word}}',participationWord(total)),false);
+      }else{
+        template=i18n.selected_months||'Selected {{months_count}} months: {{months}} — {{count}} {{participation_word}} per participant in total.';
+        setMessage(template.replace('{{months_count}}',list.length).replace('{{months}}',labels.join(', ')).replace('{{count}}',total).replace('{{participation_word}}',participationWord(total)),false);
+      }
+    }
+    function updateMonthLimit(){
+      if(!monthLimit)return;
+      const template=i18n.max_months_hint||'You can select up to {{max}} {{month_word}}.';
+      monthLimit.textContent=template.replace('{{max}}',maxMonths).replace('{{month_word}}',monthWord(maxMonths));
+    }
 
     function draw(){
       const key=keys[idx],p=key.split('-'),y=+p[0],m=+p[1]-1;
+      root.classList.toggle('is-monthly-mode',mode()==='monthly');
       title.textContent=months[m]+' '+y;
       label.textContent=mode()==='monthly'?(i18n.choose_month||'Choose month'):(i18n.choose_date||'Choose date');
       monthWrap.style.display=mode()==='monthly'?'':'none';
+      if(monthLimit)monthLimit.style.display=mode()==='monthly'?'':'none';
       prev.disabled=idx===0;
       next.disabled=idx===keys.length-1;
       grid.innerHTML='';
@@ -104,9 +146,11 @@
             seats.textContent=i18n.full||'Full';
           }else{
             const min=Math.min.apply(null,available.map(o=>+o.remaining));
-            seats.textContent=min+' '+(min===1?(i18n.available_place||'available place'):(i18n.available_places||'available places'));
+            const shortSeats=min+' '+(min===1?(i18n.place||'place'):(i18n.places||'places'));
+            seats.textContent=shortSeats;
             cell.classList.add('is-available');
-            cell.setAttribute('aria-label',formatDate(date)+', '+times.textContent+', '+seats.textContent);
+            if(mode()==='monthly'&&selectedMonths.has(key))cell.classList.add('is-month-selected');
+            cell.setAttribute('aria-label',formatDate(date)+', '+times.textContent+', '+min+' '+(min===1?(i18n.available_place||'available place'):(i18n.available_places||'available places')));
             cell.addEventListener('click',()=>selectDate(date,available,cell));
           }
           cell.appendChild(seats);
@@ -116,28 +160,36 @@
 
       if(mode()==='monthly'){
         const info=data.months&&data.months[key];
+        const selected=selectedMonths.has(key);
         monthBtn.disabled=!info||+info.remaining<1;
-        monthBtn.textContent=info?(i18n.choose||'Choose')+' '+(info.label||monthName(key)):(i18n.unavailable_month||'Month unavailable');
+        monthBtn.classList.toggle('is-selected',selected);
+        if(info){
+          monthBtn.textContent=(selected?(i18n.remove_month||'Remove'):(i18n.choose||'Choose'))+' '+(info.label||monthName(key));
+        }else{
+          monthBtn.textContent=i18n.unavailable_month||'Month unavailable';
+        }
       }
     }
 
-    function clearSelected(){
-      root.querySelectorAll('.kwb-cal-cell.is-selected,.kwb-cal-cell.is-month-selected').forEach(x=>{
-        x.classList.remove('is-selected');
-        x.classList.remove('is-month-selected');
-      });
+    function clearDateSelection(){
+      root.querySelectorAll('.kwb-cal-cell.is-selected').forEach(x=>x.classList.remove('is-selected'));
       root.querySelectorAll('.kwb-slot-choices').forEach(x=>x.remove());
     }
 
     function selectDate(date,os,cell){
-      if(mode()==='monthly')return;
-      clearSelected();
+      if(mode()==='monthly'){
+        setMessage(i18n.monthly_date_blocked||'You cannot select individual dates with monthly participation. Please use the button below to select the month you want to book.',true);
+        return;
+      }
+
+      clearDateSelection();
       cell.classList.add('is-selected');
-      monthInput.value='';
+      if(monthInput)monthInput.value='';
+      if(monthsInput)monthsInput.value='';
 
       if(os.length===1){
         occInput.value=os[0].id;
-        summary.textContent=(i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',os[0].start+'–'+os[0].end);
+        setMessage((i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',os[0].start+'–'+os[0].end),false);
         return;
       }
 
@@ -151,7 +203,7 @@
           occInput.value=o.id;
           box.querySelectorAll('button').forEach(x=>x.classList.remove('selected'));
           b.classList.add('selected');
-          summary.textContent=(i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',o.start+'–'+o.end);
+          setMessage((i18n.selected_date||'Selected date {{date}}, {{time}}.').replace('{{date}}',formatDate(date)).replace('{{time}}',o.start+'–'+o.end),false);
         });
         box.appendChild(b);
       });
@@ -161,42 +213,44 @@
     monthBtn.addEventListener('click',()=>{
       const key=keys[idx],info=data.months&&data.months[key];
       if(!info||+info.remaining<1)return;
-      monthInput.value=key;
+
+      if(selectedMonths.has(key)){
+        selectedMonths.delete(key);
+      }else{
+        if(maxMonths===1){
+          selectedMonths.clear();
+        }else if(selectedMonths.size>=maxMonths){
+          const template=i18n.max_months_reached||'You can select up to {{max}} {{month_word}} in this booking.';
+          setMessage(template.replace('{{max}}',maxMonths).replace('{{month_word}}',monthWord(maxMonths)),true);
+          return;
+        }
+        selectedMonths.add(key);
+      }
+
       occInput.value='';
-      clearSelected();
-      root.querySelectorAll('.kwb-cal-cell.is-available').forEach(x=>x.classList.add('is-month-selected'));
-      const label=info.label||monthName(key);
-      let template=i18n.selected_month||'Selected {{month}} with a total of {{count}} {{participation_word}} per participant.';const participationWord=+info.count===1?(i18n.participation_count_singular||'participation'):(i18n.participation_count_plural||'participations');summary.textContent=template.replace('{{month}}',label).replace('{{count}}',info.count).replace('{{participation_word}}',participationWord);
+      updateHiddenMonths();
+      updateMonthSummary();
+      draw();
     });
 
     if(type)type.addEventListener('change',()=>{
-      monthInput.value='';
+      if(monthInput)monthInput.value='';
+      if(monthsInput)monthsInput.value='';
       occInput.value='';
-      summary.textContent='';
-      clearSelected();
+      selectedMonths.clear();
+      setMessage('',false);
+      clearDateSelection();
       draw();
     });
 
     prev.addEventListener('click',()=>{
-      if(idx>0){
-        idx--;
-        monthInput.value='';
-        occInput.value='';
-        summary.textContent='';
-        draw();
-      }
+      if(idx>0){idx--;clearDateSelection();draw();}
     });
-
     next.addEventListener('click',()=>{
-      if(idx<keys.length-1){
-        idx++;
-        monthInput.value='';
-        occInput.value='';
-        summary.textContent='';
-        draw();
-      }
+      if(idx<keys.length-1){idx++;clearDateSelection();draw();}
     });
 
+    updateMonthLimit();
     draw();
   }
 })();
