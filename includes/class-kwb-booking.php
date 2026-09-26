@@ -224,6 +224,11 @@ final class KWB_Booking {
 	public static function month_options($id){$h=max(1,min(12,absint(get_post_meta($id,self::META_HORIZON,true)?:KWB_Settings::get('default_horizon_months',3))));$tz=wp_timezone();$c=new DateTimeImmutable('first day of this month 00:00:00',$tz);$out=array();for($i=0;$i<$h;$i++){$m=$c->modify('+'.$i.' month')->format('Y-m');$os=self::month_occurrences($id,$m,true);if(!$os)continue;$left=null;foreach($os as$o){$v=self::remaining($id,$o);$left=null===$left?$v:min($left,$v);}if($left<1)continue;$md=DateTimeImmutable::createFromFormat('!Y-m',$m,$tz);$out[$m]=array('label'=>wp_date('F Y',$md->getTimestamp(),$tz),'count'=>count($os),'remaining'=>$left,'occurrences'=>$os);}return$out;}
 	public static function hydrate($o){$tz=wp_timezone();$o['start_dt']=DateTimeImmutable::createFromFormat('Y-m-d H:i',$o['date'].' '.$o['start'],$tz);$o['end_dt']=DateTimeImmutable::createFromFormat('Y-m-d H:i',$o['date'].' '.$o['end'],$tz);return$o;}
 	public static function label($o){return wp_date('l d/m/Y',$o['start_dt']->getTimestamp(),wp_timezone()).' '.$o['start'].'–'.$o['end'];}
+	public static function month_label($month){
+		if(!preg_match('/^\d{4}-\d{2}$/',(string)$month))return(string)$month;
+		$dt=DateTimeImmutable::createFromFormat('!Y-m',(string)$month,wp_timezone());
+		return$dt?wp_date('F Y',$dt->getTimestamp(),wp_timezone()):(string)$month;
+	}
 
 	public static function fields(){
 		global$product;if(!$product||!self::enabled($product->get_id()))return;$id=$product->get_id();$m=self::mode($id,'monthly');$s=self::mode($id,'single');if(!$m&&!$s)return;
@@ -292,7 +297,7 @@ final class KWB_Booking {
 		$rows[]=array('key'=>KWB_I18n::t('participation'),'value'=>'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'));
 		if('monthly'===$b['type']){
 			$months=!empty($b['months'])?(array)$b['months']:array($b['month']);
-			$rows[]=array('key'=>count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),'value'=>esc_html(implode(', ',$months)));
+			$labels=array_map(array(__CLASS__,'month_label'),$months);$rows[]=array('key'=>count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),'value'=>esc_html(implode(', ',$labels)));
 			$rows[]=array('key'=>KWB_I18n::t('sessions'),'value'=>esc_html((string)count($b['occurrences'])));
 		}else{$rows[]=array('key'=>KWB_I18n::t('date'),'value'=>esc_html(self::label(self::hydrate($b['occurrences'][0]))));}
 		return$rows;
@@ -306,7 +311,7 @@ final class KWB_Booking {
 		$item->add_meta_data(KWB_I18n::t('participation_type_meta'),'monthly'===$b['type']?KWB_I18n::t('monthly'):KWB_I18n::t('single'),true);
 		if('monthly'===$b['type']){
 			$months=!empty($b['months'])?(array)$b['months']:array($b['month']);
-			$item->add_meta_data(count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),implode(', ',$months),true);
+			$labels=array_map(array(__CLASS__,'month_label'),$months);$item->add_meta_data(count($months)>1?KWB_I18n::t('months_label'):KWB_I18n::t('month'),implode(', ',$labels),true);
 			$item->add_meta_data(KWB_I18n::t('sessions'),count($b['occurrences']),true);
 		}else{
 			$o=self::hydrate($b['occurrences'][0]);
