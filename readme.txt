@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.6.3
+Stable tag: 0.6.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,7 +23,7 @@ Current features:
 * Enable booking per WooCommerce product.
 * Multiple date/time slots per workshop.
 * Capacity per slot.
-* Product quantity acts as number of seats/children.
+* Product quantity acts as number of participants.
 * Capacity validation before checkout.
 * Booking data stored on WooCommerce order items.
 * Google Calendar links in customer order emails.
@@ -90,8 +90,12 @@ Current features:
 * Dashboard > Updates > Check again clears the plugin update cache.
 
 
-= 0.6.3 =
+= 0.6.4 =
+* Added selection of multiple monthly booking months with a configurable per-product maximum.
+* Monthly price is multiplied by the selected month count.
+* Monthly mode blocks individual date selection and guides the customer to select a month.
 * Fixed calendar availability display for monthly-only workshops.
+* Added responsive square calendar cells with compact time and availability information.
 * Renamed child-specific quantity terminology to neutral participation terminology.
 * Added automatic English / Greek UI based on the WordPress language.
 * Localized booking forms, product settings, calendar UI, reminders, RSVP and customer order metadata.
