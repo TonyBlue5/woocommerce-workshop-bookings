@@ -94,9 +94,13 @@ Monthly booking selection uses a simpler month button and a confirmation message
 Customer order details and emails now explain how to add bookings to Google Calendar or Apple / Outlook / iCalendar. Calendar events include workshop title, booking date/time, booking mode, order context, product link, and a richer description. A per-product calendar description can be entered in the Workshop Booking panel; when empty, the WooCommerce short description is used. Location falls back from product override to the global Workshop Bookings setting and finally to the WooCommerce store address.
 
 
-## v0.6.3 bilingual UI and monthly-only workshops
+## v0.6.4 multi-month bookings, bilingual UI and responsive calendar
 
-Monthly-only products now still populate the visual calendar with their real weekly occurrences, times and remaining capacity even when single-session purchases are disabled.
+Monthly participation can now span more than one selected month. Each product defines how many future months are visible and, separately, the maximum number of months a customer may include in a single booking. The monthly price is multiplied by the selected month count, while WooCommerce quantity remains the number of participants.
+
+In monthly mode, session dates are informational only. Clicking an individual session displays guidance to select the month instead. Monthly-only products still populate the visual calendar with their real weekly occurrences, times and remaining capacity even when single-session purchases are disabled.
+
+Calendar cells use responsive square tiles with compact time and remaining-place labels so the seven-column calendar remains readable on desktop and mobile.
 
 The commercial UI is bilingual. English is the default, while WordPress installations using an `el_*` locale automatically receive the Greek interface. This covers the product booking panel, storefront calendar, cart/order booking metadata, customer calendar instructions, reminder/RSVP copy and the admin schedule editor.
 
