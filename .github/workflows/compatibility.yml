@@ -2,7 +2,7 @@ name: WordPress + WooCommerce compatibility
 
 on:
   push:
-    branches: [main, monthly-only-i18n-v0.6.3]
+    branches: [main, multi-month-responsive-v0.6.4]
   pull_request:
   schedule:
     - cron: '37 4 * * *'
