@@ -134,7 +134,14 @@
           const available=os.filter(o=>+o.remaining>0);
           const times=document.createElement('span');
           times.className='kwb-cal-time';
-          times.textContent=os.map(o=>o.start+(o.end?'–'+o.end:'')).join(' / ');
+          os.forEach((o,index)=>{
+            const slot=document.createElement('span');
+            slot.className='kwb-cal-slot-time';
+            const start=document.createElement('span');start.textContent=o.start;slot.appendChild(start);
+            if(o.end){const end=document.createElement('span');end.textContent='– '+o.end;slot.appendChild(end);}
+            times.appendChild(slot);
+            if(index<os.length-1){const sep=document.createElement('span');sep.className='kwb-cal-slot-sep';sep.textContent='/';times.appendChild(sep);}
+          });
           cell.appendChild(times);
 
           const seats=document.createElement('span');
@@ -150,7 +157,7 @@
             seats.textContent=shortSeats;
             cell.classList.add('is-available');
             if(mode()==='monthly'&&selectedMonths.has(key))cell.classList.add('is-month-selected');
-            cell.setAttribute('aria-label',formatDate(date)+', '+times.textContent+', '+min+' '+(min===1?(i18n.available_place||'available place'):(i18n.available_places||'available places')));
+            cell.setAttribute('aria-label',formatDate(date)+', '+os.map(o=>o.start+(o.end?'–'+o.end:'')).join(' / ')+', '+min+' '+(min===1?(i18n.available_place||'available place'):(i18n.available_places||'available places')));
             cell.addEventListener('click',()=>selectDate(date,available,cell));
           }
           cell.appendChild(seats);
