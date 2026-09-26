@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.6.3
+## 0.6.4
+- Added multi-month monthly bookings with a per-product maximum number of selectable months.
+- Monthly pricing now multiplies by the number of selected months while quantity continues to represent participants.
+- Monthly mode no longer allows individual date selection; clicking a session date shows guidance to use the month-selection button.
+- Added the “Maximum number of booking months” product setting directly below the booking horizon.
+- Reworked calendar cells into responsive square tiles with compact, readable time and remaining-place information on desktop and mobile.
 - Fixed monthly-only workshop products so their scheduled dates, times and remaining places are still shown in the visual calendar.
 - Renamed “Maximum children per booking” to the neutral “Maximum participations per booking”.
 - Front-end quantity help now refers to participants rather than children.
