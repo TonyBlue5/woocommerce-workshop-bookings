@@ -10,6 +10,7 @@
   border-radius:14px;
   background:#fff;
   color:#17202a;
+  width:100%;
 }
 .kwb-booking-fields select{
   width:100%;
@@ -27,7 +28,8 @@
   display:flex;
   align-items:center;
   justify-content:space-between;
-  max-width:600px;
+  width:100%;
+  max-width:680px;
   margin:10px 0 12px;
 }
 .kwb-calendar-nav button{
@@ -54,9 +56,10 @@
 .kwb-current-month{font-weight:700;font-size:18px;color:#17202a}
 .kwb-calendar-grid{
   display:grid;
-  grid-template-columns:repeat(7,minmax(48px,1fr));
+  grid-template-columns:repeat(7,minmax(0,1fr));
   gap:6px;
-  max-width:600px;
+  width:100%;
+  max-width:680px;
 }
 .kwb-cal-dayname{
   text-align:center;
@@ -65,8 +68,12 @@
   color:#344054;
   padding:5px 2px;
 }
+.kwb-cal-blank{aspect-ratio:1/1}
 .kwb-cal-cell{
-  min-height:84px;
+  width:100%;
+  aspect-ratio:1/1;
+  min-width:0;
+  min-height:0;
   border:1px solid #e1e4e8 !important;
   background:#f1f2f4 !important;
   color:#9aa2ab !important;
@@ -77,12 +84,13 @@
   flex-direction:column;
   align-items:flex-start;
   justify-content:flex-start;
-  gap:3px;
+  gap:2px;
   cursor:pointer;
   text-align:left;
   box-shadow:none !important;
   text-transform:none !important;
   opacity:1 !important;
+  overflow:hidden;
 }
 .kwb-cal-cell.is-disabled{
   background:#f0f1f2 !important;
@@ -103,6 +111,7 @@
   color:#183c24 !important;
   -webkit-text-fill-color:#183c24 !important;
 }
+.kwb-booking-fields.is-monthly-mode .kwb-cal-cell.is-available{cursor:help}
 .kwb-cal-cell.is-available:hover,
 .kwb-cal-cell.is-available:focus{
   border-color:#28723e !important;
@@ -119,35 +128,46 @@
 .kwb-cal-number{
   display:block;
   font-weight:800;
-  font-size:16px;
+  font-size:clamp(12px,1.8vw,16px);
   line-height:1;
   color:inherit !important;
   -webkit-text-fill-color:inherit !important;
 }
 .kwb-cal-time{
-  display:block;
-  margin-top:4px;
-  font-size:11px;
-  line-height:1.2;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+  margin-top:3px;
+  font-size:clamp(8px,1.2vw,10px);
+  line-height:1.05;
   font-weight:700;
   color:#275d38 !important;
   -webkit-text-fill-color:#275d38 !important;
+  width:100%;
 }
+.kwb-cal-slot-time{
+  display:flex;
+  flex-direction:column;
+  white-space:nowrap;
+}
+.kwb-cal-slot-sep{display:none}
 .kwb-cal-seats{
   display:block;
   margin-top:auto;
-  font-size:11px;
-  line-height:1.2;
-  font-weight:700;
+  font-size:clamp(8px,1.2vw,10px);
+  line-height:1.05;
+  font-weight:800;
   color:#275d38 !important;
   -webkit-text-fill-color:#275d38 !important;
+  white-space:nowrap;
 }
 .kwb-cal-cell.is-full .kwb-cal-seats{color:#777 !important;-webkit-text-fill-color:#777 !important}
 .kwb-calendar-help{
   font-size:12px;
   line-height:1.5;
   color:#667085;
-  max-width:600px;
+  width:100%;
+  max-width:680px;
   margin:10px 0;
 }
 .kwb-month-action{
@@ -155,7 +175,8 @@
   align-items:center;
   gap:14px;
   flex-wrap:wrap;
-  max-width:600px;
+  width:100%;
+  max-width:680px;
   margin:14px 0 5px;
 }
 .kwb-month-select-wrap{margin:0}
@@ -173,13 +194,27 @@
   text-transform:none !important;
 }
 .kwb-select-month:hover,.kwb-select-month:focus{background:#d83f2f !important;color:#fff !important;-webkit-text-fill-color:#fff !important}
+.kwb-select-month.is-selected{background:#26743d !important}
 .kwb-selection-summary{
-  flex:1 1 250px;
+  flex:1 1 270px;
   font-weight:600;
   font-size:14px;
   line-height:1.45;
   color:#25313c;
   margin:0;
+}
+.kwb-selection-summary.is-warning{
+  color:#8a4b08;
+  background:#fff4dd;
+  border:1px solid #f0cd8a;
+  border-radius:7px;
+  padding:9px 11px;
+}
+.kwb-month-limit{
+  flex-basis:100%;
+  font-size:12px;
+  color:#667085;
+  line-height:1.4;
 }
 .kwb-slot-choices{
   grid-column:1/-1;
@@ -205,12 +240,23 @@
   border-color:#26743d !important;
 }
 .kwb-empty{grid-column:1/-1;color:#667085}
+
 @media(max-width:640px){
-  .kwb-booking-fields{padding:14px}
-  .kwb-calendar-grid{gap:4px;grid-template-columns:repeat(7,minmax(38px,1fr))}
-  .kwb-cal-cell{min-height:72px;padding:5px !important}
-  .kwb-cal-number{font-size:14px}
-  .kwb-cal-time,.kwb-cal-seats{font-size:9px}
+  .kwb-booking-fields{padding:12px}
+  .kwb-calendar-grid{gap:4px}
+  .kwb-calendar-nav{max-width:none}
+  .kwb-cal-cell{padding:5px !important;border-radius:6px}
+  .kwb-cal-number{font-size:13px}
+  .kwb-cal-time,.kwb-cal-seats{font-size:8.5px}
   .kwb-month-action{align-items:stretch}
   .kwb-selection-summary{flex-basis:100%}
+  .kwb-select-month{width:100%}
+}
+@media(max-width:420px){
+  .kwb-booking-fields{padding:9px}
+  .kwb-calendar-grid{gap:3px}
+  .kwb-cal-cell{padding:4px !important}
+  .kwb-cal-number{font-size:12px}
+  .kwb-cal-time,.kwb-cal-seats{font-size:8px}
+  .kwb-current-month{font-size:16px}
 }
