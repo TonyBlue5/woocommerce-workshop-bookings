@@ -35,6 +35,14 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: wp-cli
+      - name: Verify WP-CLI and recover a failed tool download
+        run: |
+          set -euo pipefail
+          if ! command -v wp >/dev/null; then
+            curl --fail --location --retry 5 --retry-all-errors https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+            sudo install -m 755 /tmp/wp-cli.phar /usr/local/bin/wp
+          fi
+          wp --info
       - name: PHP syntax check
         run: |
           php -l woocommerce-workshop-bookings.php
@@ -81,3 +89,10 @@ jobs:
             wp option update woocommerce_custom_orders_table_enabled no --path=/tmp/kwb-test
           fi
           wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/kwb-test | grep commercial-smoke-ok
+      - name: Save rendered dashboard previews
+        if: matrix.php == '8.2' && matrix.storage == 'legacy'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-previews
+          path: ui-preview/*.html
+          retention-days: 7

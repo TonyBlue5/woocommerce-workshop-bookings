@@ -90,6 +90,28 @@ kwbc_assert(KWB_Commercial::csv_cell('=HYPERLINK("x")')[0]==="'",'CSV formula in
 kwbc_assert(KWB_Commercial::csv_cell("\t=1+1")[0]==="'",'CSV whitespace formula injection');
 kwbc_assert(KWB_Commercial::csv_cell('Normal')==='Normal','CSV corrupted normal text');
 
+// Failed mail can be retried without issuing another coupon.
+$fail_mail=true;
+$mail_failure=static function($return)use(&$fail_mail){return $fail_mail?false:$return;};
+add_filter('pre_wp_mail',$mail_failure,30);
+$loyalty_config=array('kind'=>'loyalty','policy'=>$policy,'email'=>'friend1@example.org','bookings'=>1,'workshops'=>1,'subject'=>'Thank you','message'=>'Your reward','image'=>0);
+$loyalty_campaign=KWB_Campaigns::create($loyalty_config,wp_generate_uuid4());KWB_Campaigns::prepare($loyalty_campaign);KWB_Campaigns::send($loyalty_campaign);
+$before_coupons=get_posts(array('post_type'=>'shop_coupon','meta_key'=>'_kwb_recipient','meta_value'=>'friend1@example.org','numberposts'=>-1));
+$fail_mail=false;KWB_Campaigns::retry($loyalty_campaign);KWB_Campaigns::send($loyalty_campaign);
+$after_coupons=get_posts(array('post_type'=>'shop_coupon','meta_key'=>'_kwb_recipient','meta_value'=>'friend1@example.org','numberposts'=>-1));
+kwbc_assert(count($before_coupons)===1 && count($after_coupons)===1,'mail retry created duplicate loyalty coupons');
+global $wpdb;
+kwbc_assert($wpdb->get_var($wpdb->prepare("SELECT state FROM {$wpdb->prefix}kwb_deliveries WHERE campaign=%s",$loyalty_campaign))==='sent','failed mail did not recover');
+remove_filter('pre_wp_mail',$mail_failure,30);
+
+// Single revenue stays separate, including a different order currency.
+$single_order=kwbc_order($pid,$owner,'single',14);$single_order->set_currency('USD');$single_order->save();
+$report=KWB_Commercial::report();kwbc_assert($report[$pid.':USD']['single']===1 && abs($report[$pid.':USD']['single_revenue']-14)<0.01,'single revenue/currency separation failed');
+$single_order->set_date_created(time()-100*DAY_IN_SECONDS);$single_order->save();
+kwbc_assert(isset(KWB_Commercial::inactive(90)['owner@example.org']),'inactive customer missing');
+$recent_order=kwbc_order($pid,$owner,'single',14);
+kwbc_assert(!isset(KWB_Commercial::inactive(90)['owner@example.org']),'recent customer incorrectly exported as inactive');
+
 // Real POST handler rejects missing nonce before changing settings.
 $die_handler=static function(){return static function(){throw new RuntimeException('expected-wp-die');};};
 add_filter('wp_die_handler',$die_handler,999);
@@ -116,6 +138,9 @@ $cart=WC()->cart->get_cart();$cart[$key]['kwb_booking']['occurrences']=array(arr
 update_post_meta($pid,'_kwb_blackouts','2030-10-08');wc_clear_notices();KWB_Commercial::check_cancelled_cart();
 kwbc_assert(wc_notice_count('error')>0,'cancelled date still accepted in cart');
 wc_clear_notices();
+$before_mail=count($sent);$paid_items=$orders[1]->get_items();$paid_item=reset($paid_items);$occ=KWB_Booking::item_occurrences($paid_item)[0];
+KWB_RSVP::send_reminder($orders[1]->get_id(),$paid_item->get_id(),$occ['id']);
+kwbc_assert(count($sent)===$before_mail,'cancelled session reminder was sent');
 
 // Customer output does not reveal another customer's bookings or coupon.
 wp_set_current_user($friends[1]);ob_start();KWB_Dashboard::account();$html=ob_get_clean();
@@ -124,4 +149,11 @@ wp_set_current_user($admin->ID);ob_start();KWB_Dashboard::render();$english=ob_g
 add_filter('locale',static function(){return 'el';});add_filter('determine_locale',static function(){return 'el';});
 ob_start();KWB_Dashboard::render();$greek=ob_get_clean();
 kwbc_assert(strpos($english,'Booking overview')!==false && strpos($greek,'Επισκόπηση κρατήσεων')!==false,'bilingual admin rendering failed');
+if (getenv('GITHUB_WORKSPACE')) {
+ $dir=getenv('GITHUB_WORKSPACE').'/ui-preview';wp_mkdir_p($dir);
+ $style='<style>'.file_get_contents(KWB_PLUGIN_DIR.'assets/kwb-dashboard.css').'</style>';
+ foreach(array('admin-en'=>$english,'admin-el'=>$greek,'account-en'=>$html) as $name=>$markup) {
+  file_put_contents($dir.'/'.$name.'.html','<!doctype html><html lang="'.(strpos($name,'-el')!==false?'el':'en').'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'.$style.'<body style="margin:20px;background:#f3f5f4">'.$markup.'</body></html>');
+ }
+}
 echo "commercial-smoke-ok\n";

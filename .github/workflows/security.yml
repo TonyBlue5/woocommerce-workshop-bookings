@@ -83,6 +83,14 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: wp-cli
+      - name: Verify WP-CLI and recover a failed tool download
+        run: |
+          set -euo pipefail
+          if ! command -v wp >/dev/null; then
+            curl --fail --location --retry 5 --retry-all-errors https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+            sudo install -m 755 /tmp/wp-cli.phar /usr/local/bin/wp
+          fi
+          wp --info
       - name: Install WordPress, WooCommerce and plugin
         run: |
           set -euo pipefail

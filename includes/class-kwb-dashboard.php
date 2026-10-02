@@ -53,7 +53,7 @@ final class KWB_Dashboard {
    self::input('friends',self::t('Friends who must complete a purchase','Φίλοι που πρέπει να ολοκληρώσουν αγορά'),$policy['friends'],'number','min="1" max="100" required');
   }
   self::input('percent',self::t('Discount (%) — 100 means free','Έκπτωση (%) — 100 σημαίνει δωρεάν'),$policy['percent'],'number','min="1" max="100" step="0.01" required');
-  self::input('months',self::t('Maximum rewarded months','Μέγιστος αριθμός μηνών ανταμοιβής'),$policy['months'],'number','min="1" max="12" required');
+  self::input('months',self::t('Maximum rewarded months (monthly bookings)','Μέγιστος αριθμός μηνών ανταμοιβής (μηνιαίες κρατήσεις)'),$policy['months'],'number','min="1" max="12" required');
   echo '<label class="kwb-field"><span>'.esc_html(self::t('Eligible purchases and reward','Επιλέξιμες αγορές και ανταμοιβή')).'</span><select name="mode">';
   foreach(array('monthly'=>self::t('Monthly','Μηνιαία'),'single'=>self::t('Single','Μεμονωμένη'),'any'=>self::t('Both','Και τα δύο')) as $value=>$label) { echo '<option value="'.esc_attr($value).'" '.selected($policy['mode'],$value,false).'>'.esc_html($label).'</option>'; }
   echo '</select></label>';
@@ -130,7 +130,7 @@ final class KWB_Dashboard {
   check_admin_referer('kwb_commercial','kwb_nonce');
   $op=self::request('op'); $tab='deliveries';
   if ('settings'===$op) {
-   $policy=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_product($policy['product'],true);
+   $policy=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_policy($policy);
    update_option('kwb_referral_settings',$policy,false); $tab='referrals';
   } elseif ('export'===$op) {
    nocache_headers(); header('Content-Type: text/csv; charset=UTF-8'); header('Content-Disposition: attachment; filename="inactive-workshop-customers.csv"'); header('X-Content-Type-Options: nosniff');
@@ -146,7 +146,7 @@ final class KWB_Dashboard {
    if (!$config['subject'] || !$config['message'] || strlen($config['message'])>30000) { wp_die(esc_html(self::t('Enter a subject and message.','Συμπληρώστε θέμα και μήνυμα.'))); }
    if ($config['image'] && (!wp_attachment_is_image($config['image']) || !current_user_can('edit_post',$config['image']))) { wp_die('Invalid image'); }
    if ('loyalty'===$kind) {
-    $config['policy']=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_product($config['policy']['product'],true);
+    $config['policy']=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_policy($config['policy']);
     $config['email']=strtolower(sanitize_email(self::request('email')));
     if (self::request('email') && !is_email($config['email'])) { wp_die('Invalid email'); }
     $config['bookings']=max(1,absint(self::request('bookings'))); $config['workshops']=max(1,absint(self::request('workshops')));
@@ -169,6 +169,16 @@ final class KWB_Dashboard {
   wp_safe_redirect(add_query_arg('saved',1,self::url($tab)));exit;
  }
  public static function csv($value) { return KWB_Commercial::csv_cell($value); }
+ private static function check_policy($policy) {
+  self::check_product($policy['product'],true);
+  if (!$policy['product']) { return; }
+  if ('any'!==$policy['mode'] && !KWB_Booking::mode($policy['product'],$policy['mode'])) {
+   wp_die(esc_html(self::t('This workshop does not offer the selected booking mode.','Το εργαστήριο δεν προσφέρει τον επιλεγμένο τύπο κράτησης.')));
+  }
+  if ('single'!==$policy['mode'] && KWB_Booking::mode($policy['product'],'monthly') && $policy['months']>KWB_Booking::max_booking_months($policy['product'])) {
+   wp_die(esc_html(self::t('The reward month allowance exceeds this workshop’s maximum booking months. Increase the product limit or reduce the reward.','Οι μήνες ανταμοιβής υπερβαίνουν το όριο μηνών κράτησης του εργαστηρίου. Αυξήστε το όριο του προϊόντος ή μειώστε την ανταμοιβή.')));
+  }
+ }
  private static function check_product($id,$allow_all=false) {
   if (!$id && $allow_all) { return; }
   if (!$id || !wc_get_product($id) || !KWB_Booking::enabled($id) || !current_user_can('edit_post',$id)) { wp_die(esc_html(self::t('Choose a workshop you can edit.','Επιλέξτε εργαστήριο που μπορείτε να επεξεργαστείτε.'))); }
