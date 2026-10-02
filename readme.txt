@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.6.4
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -99,3 +99,9 @@ Current features:
 * Renamed child-specific quantity terminology to neutral participation terminology.
 * Added automatic English / Greek UI based on the WordPress language.
 * Localized booking forms, product settings, calendar UI, reminders, RSVP and customer order metadata.
+
+= 0.7.0 =
+* Added admin/shop-manager analytics, loyalty coupons, inactive-customer CSV and cancellation broadcasts.
+* Added configurable referral rewards and customer My Account bookings, coupons and referral links.
+* Added English/Greek responsive screens, authenticated actions, private mail queues and HPOS/legacy integration coverage.
+* Preserved existing booking records and signed updates.

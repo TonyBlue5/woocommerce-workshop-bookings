@@ -2,7 +2,7 @@ name: Security gate
 
 on:
   push:
-    branches: [main, multi-month-responsive-v0.6.4]
+    branches: [main, commercial-dashboard-v0.7.0]
   pull_request:
   schedule:
     - cron: '11 5 * * *'
@@ -27,6 +27,10 @@ jobs:
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
           php -l includes/class-kwb-i18n.php
+          php -l includes/class-kwb-commercial.php
+          php -l includes/class-kwb-rewards.php
+          php -l includes/class-kwb-campaigns.php
+          php -l includes/class-kwb-dashboard.php
       - name: Reject high-risk PHP execution primitives
         run: |
           set -euo pipefail
@@ -79,6 +83,14 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: wp-cli
+      - name: Verify WP-CLI and recover a failed tool download
+        run: |
+          set -euo pipefail
+          if ! command -v wp >/dev/null; then
+            curl --fail --location --retry 5 --retry-all-errors https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+            sudo install -m 755 /tmp/wp-cli.phar /usr/local/bin/wp
+          fi
+          wp --info
       - name: Install WordPress, WooCommerce and plugin
         run: |
           set -euo pipefail

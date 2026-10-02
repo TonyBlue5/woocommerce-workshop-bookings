@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+- Added a bilingual WooCommerce workshop dashboard restricted to Administrator and Shop Manager roles with the WooCommerce management capability.
+- Added per-workshop monthly/single booking counts and net line revenue, date filters, refund handling and separate currencies.
+- Added customer loyalty campaigns, minimum booking/workshop criteria, email-restricted single-use coupons, a review step, private background delivery and failed-message retries.
+- Added inactive-customer CSV export with formula-injection protection and explicit unknown marketing-consent status.
+- Added dated cancellation notices with message/image, automatic date blackout and reminder/checkout cancellation checks; existing order and booking metadata is preserved.
+- Added signed referral attribution for new registrations, configurable qualifying purchases and rewards, distinct-friend counting, idempotent coupons and live refund eligibility checks.
+- Added My Account bookings, attendance links, coupon activation and personal referral links, with responsive English/Greek screens.
+- Added commercial integration tests across PHP 7.4–8.4 and legacy/HPOS order storage.
+- Preserved the signed release/update architecture; the updater change is the version constant only.
+
 ## 0.6.4
 - Added multi-month monthly bookings with a per-product maximum number of selectable months.
 - Monthly pricing now multiplies by the number of selected months while quantity continues to represent participants.

@@ -2,7 +2,7 @@ name: WordPress + WooCommerce compatibility
 
 on:
   push:
-    branches: [main, multi-month-responsive-v0.6.4]
+    branches: [main, commercial-dashboard-v0.7.0]
   pull_request:
   schedule:
     - cron: '37 4 * * *'
@@ -18,6 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         php: ['7.4', '8.1', '8.2', '8.3', '8.4']
+        storage: ['legacy', 'hpos']
     services:
       mysql:
         image: mysql:8.0
@@ -34,6 +35,14 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: wp-cli
+      - name: Verify WP-CLI and recover a failed tool download
+        run: |
+          set -euo pipefail
+          if ! command -v wp >/dev/null; then
+            curl --fail --location --retry 5 --retry-all-errors https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+            sudo install -m 755 /tmp/wp-cli.phar /usr/local/bin/wp
+          fi
+          wp --info
       - name: PHP syntax check
         run: |
           php -l woocommerce-workshop-bookings.php
@@ -42,6 +51,10 @@ jobs:
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
           php -l includes/class-kwb-i18n.php
+          php -l includes/class-kwb-commercial.php
+          php -l includes/class-kwb-rewards.php
+          php -l includes/class-kwb-campaigns.php
+          php -l includes/class-kwb-dashboard.php
       - name: Install latest WordPress and WooCommerce
         run: |
           set -euo pipefail
@@ -65,3 +78,21 @@ jobs:
           wp eval "echo class_exists('KWB_Settings') ? 'settings-loaded' : 'missing';" --path=/tmp/kwb-test | grep settings-loaded
           wp eval "echo class_exists('KWB_I18n') ? 'i18n-loaded' : 'missing';" --path=/tmp/kwb-test | grep i18n-loaded
           wp eval "echo defined('WC_VERSION') ? WC_VERSION : 'missing';" --path=/tmp/kwb-test
+      - name: Select order storage and test commercial workflows
+        env:
+          STORAGE: ${{ matrix.storage }}
+        run: |
+          set -euo pipefail
+          if [ "$STORAGE" = hpos ]; then
+            wp option update woocommerce_custom_orders_table_enabled yes --path=/tmp/kwb-test
+          else
+            wp option update woocommerce_custom_orders_table_enabled no --path=/tmp/kwb-test
+          fi
+          wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/kwb-test | grep commercial-smoke-ok
+      - name: Save rendered dashboard previews
+        if: matrix.php == '8.2' && matrix.storage == 'legacy'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-previews
+          path: ui-preview/*.html
+          retention-days: 7
