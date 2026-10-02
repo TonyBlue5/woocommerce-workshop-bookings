@@ -24,7 +24,7 @@ final class KWB_Dashboard {
   wp_enqueue_style('kwb-dashboard',plugins_url('../assets/kwb-dashboard.css',__FILE__),array(),KWB_VERSION);
   if (is_admin()) {
    wp_enqueue_media();
-   wp_enqueue_script('wc-enhanced-select');wp_enqueue_style('woocommerce_admin_styles');
+   wp_enqueue_script('wc-enhanced-select');wp_enqueue_style('woocommerce_admin_styles');wp_enqueue_script('jquery-ui-datepicker');
    wp_enqueue_script('kwb-dashboard',plugins_url('../assets/kwb-dashboard.js',__FILE__),array('jquery'),KWB_VERSION,true);
   }
  }
@@ -35,8 +35,10 @@ final class KWB_Dashboard {
  }
  public static function url($tab='analytics') { return add_query_arg(array('page'=>'kwb-dashboard','tab'=>$tab),admin_url('admin.php')); }
  public static function input($name,$label,$value='',$type='text',$extra='') {
+  if('date'===$type && KWB_I18n::is_greek()){$type='text';if(KWB_Booking::date_ok($value)){$value=substr($value,8,2).'/'.substr($value,5,2).'/'.substr($value,0,4);}$extra.=' class="kwb-local-date" placeholder="ηη/μμ/εεεε" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"';}
   echo '<label class="kwb-field"><span>'.esc_html($label).'</span><input name="'.esc_attr($name).'" type="'.esc_attr($type).'" value="'.esc_attr($value).'" '.$extra.'></label>';
  }
+ public static function date_value($value){if(preg_match('~^(\d{2})/(\d{2})/(\d{4})$~',$value,$parts))return $parts[3].'-'.$parts[2].'-'.$parts[1];return $value;}
  public static function form($op,$label) {
   echo '<form class="kwb-form" method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
   wp_nonce_field('kwb_commercial','kwb_nonce');
@@ -120,7 +122,7 @@ final class KWB_Dashboard {
   echo '<input id="kwb-image" type="hidden" name="image" value="0"><button type="button" class="button" id="kwb-select-image">'.esc_html(self::t('Choose image','Επιλογή εικόνας')).'</button><button type="button" class="button" id="kwb-remove-image">'.esc_html(self::t('Remove image','Αφαίρεση εικόνας')).'</button><div id="kwb-image-preview"></div>';
  }
  public static function analytics() {
-  $from=sanitize_text_field($_GET['from']??wp_date('Y-m-01')); $to=sanitize_text_field($_GET['to']??wp_date('Y-m-d'));
+  $from=self::date_value(sanitize_text_field($_GET['from']??wp_date('Y-m-01'))); $to=self::date_value(sanitize_text_field($_GET['to']??wp_date('Y-m-d')));
   if (!KWB_Booking::date_ok($from) || !KWB_Booking::date_ok($to) || $from>$to) { $from=wp_date('Y-m-01');$to=wp_date('Y-m-d'); }
   echo '<section class="kwb-card"><h2>'.esc_html(self::t('Booking overview','Επισκόπηση κρατήσεων')).'</h2><form class="kwb-filters" method="get"><input type="hidden" name="page" value="kwb-dashboard">';
   self::input('from',self::t('From','Από'),$from,'date');self::input('to',self::t('To','Έως'),$to,'date');
@@ -137,7 +139,7 @@ final class KWB_Dashboard {
   echo '<input type="hidden" name="from" value="'.esc_attr($from).'"><input type="hidden" name="to" value="'.esc_attr($to).'">';
   self::button(self::t('Download CSV','Λήψη CSV'));echo '</section>';
  }
- public static function request($name,$default='') { return isset($_POST[$name]) && is_scalar($_POST[$name])?sanitize_text_field(wp_unslash($_POST[$name])):$default; }
+ public static function request($name,$default='') { $value=isset($_POST[$name]) && is_scalar($_POST[$name])?sanitize_text_field(wp_unslash($_POST[$name])):$default;return in_array($name,array('from','to','date'),true)?self::date_value($value):$value; }
  public static function handle() {
   if (!KWB_Commercial::can_manage()) { wp_die('Forbidden','',array('response'=>403)); }
   check_admin_referer('kwb_commercial','kwb_nonce');
