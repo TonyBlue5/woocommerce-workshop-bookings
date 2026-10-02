@@ -105,8 +105,9 @@ kwbc_assert($wpdb->get_var($wpdb->prepare("SELECT state FROM {$wpdb->prefix}kwb_
 remove_filter('pre_wp_mail',$mail_failure,30);
 
 // Single revenue stays separate, including a different order currency.
-$single_order=kwbc_order($pid,$owner,'single',14);$single_order->set_currency('USD');$single_order->save();
-$report=KWB_Commercial::report();kwbc_assert($report[$pid.':USD']['single']===1 && abs($report[$pid.':USD']['single_revenue']-14)<0.01,'single revenue/currency separation failed');
+$other_currency='USD'===get_woocommerce_currency()?'EUR':'USD';
+$single_order=kwbc_order($pid,$owner,'single',14);$single_order->set_currency($other_currency);$single_order->save();
+$report=KWB_Commercial::report();kwbc_assert($report[$pid.':'.$other_currency]['single']===1 && abs($report[$pid.':'.$other_currency]['single_revenue']-14)<0.01 && isset($report[$pid.':'.get_woocommerce_currency()]),'single revenue/currency separation failed');
 $single_order->set_date_created(time()-100*DAY_IN_SECONDS);$single_order->save();
 kwbc_assert(isset(KWB_Commercial::inactive(90)['owner@example.org']),'inactive customer missing');
 $recent_order=kwbc_order($pid,$owner,'single',14);

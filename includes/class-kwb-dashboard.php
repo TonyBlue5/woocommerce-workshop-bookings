@@ -160,9 +160,15 @@ final class KWB_Dashboard {
   } elseif ('confirm'===$op) {
    $id=sanitize_key(self::request('preview')); $config=get_transient('kwb_preview_'.get_current_user_id().'_'.$id);
    if (!$config) { wp_die(esc_html(self::t('Preview expired. Please review the message again.','Η προεπισκόπηση έληξε. Ελέγξτε ξανά το μήνυμα.'))); }
+   if ('loyalty'===$config['kind']) { self::check_policy($config['policy']); }
    if ('broadcast'===$config['kind']) {
-    $blackouts=KWB_Booking::blackouts($config['product']);$blackouts[$config['date']]=1;
-    update_post_meta($config['product'],KWB_Booking::META_BLACKOUTS,implode("\n",array_keys($blackouts)));
+    self::check_product($config['product']);
+    $lock='cancel_'.$config['product'];
+    if (!KWB_Commercial::lock($lock)) { wp_die(esc_html(self::t('The workshop is being updated. Please try again.','Το εργαστήριο ενημερώνεται. Δοκιμάστε ξανά.'))); }
+    try {
+     $blackouts=KWB_Booking::blackouts($config['product']);$blackouts[$config['date']]=1;
+     update_post_meta($config['product'],KWB_Booking::META_BLACKOUTS,implode("\n",array_keys($blackouts)));
+    } finally { KWB_Commercial::unlock($lock); }
    }
    KWB_Campaigns::create($config,$id); delete_transient('kwb_preview_'.get_current_user_id().'_'.$id);
   } elseif ('retry'===$op) { KWB_Campaigns::retry(sanitize_key(self::request('campaign'))); }
@@ -250,7 +256,12 @@ final class KWB_Dashboard {
      $cancelled=isset(KWB_Booking::blackouts($item->get_product_id())[$occ['date']]);
      echo '<li>'.esc_html($occ['date'].' · '.$occ['start'].'–'.$occ['end']).' ';
      if ($cancelled) { echo '<strong>'.esc_html(self::t('Cancelled','Ακυρώθηκε')).'</strong>'; }
-     elseif (KWB_Booking::occurrence_declined($item,$occ['id'])) { echo esc_html(self::t('Not attending','Δεν θα παρευρεθώ')); }
+     elseif (KWB_Booking::occurrence_declined($item,$occ['id'])) {
+      echo esc_html(self::t('Not attending','Δεν θα παρευρεθώ'));
+      if ($order->is_paid() && $occ['start_dt']->getTimestamp()>time() && KWB_Booking::rsvp_enabled($item->get_product_id())) {
+       echo ' · <a href="'.esc_url(KWB_RSVP::url($order->get_id(),$item->get_id(),$occ['id'],'yes')).'">'.esc_html(self::t('Attend if a place is available','Συμμετοχή αν υπάρχει διαθέσιμη θέση')).'</a>';
+      }
+     }
      elseif ($order->is_paid() && $occ['start_dt']->getTimestamp()>time() && KWB_Booking::rsvp_enabled($item->get_product_id())) {
       echo '<a href="'.esc_url(KWB_RSVP::url($order->get_id(),$item->get_id(),$occ['id'],'no')).'">'.esc_html(self::t('Decline attendance','Δήλωση απουσίας')).'</a>';
      }
