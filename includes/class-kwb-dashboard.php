@@ -64,7 +64,7 @@ final class KWB_Dashboard {
  public static function render() {
   if (!KWB_Commercial::can_manage()) { wp_die(esc_html(self::t('Access denied.','Δεν επιτρέπεται η πρόσβαση.')), '',array('response'=>403)); }
   $tab=sanitize_key($_GET['tab']??'analytics');
-  echo '<div class="wrap kwb-dashboard"><header class="kwb-hero"><span>WORKSHOP BOOKINGS</span><h1>'.esc_html(self::t('Your workshops, together','Όλα τα εργαστήριά σας μαζί')).'</h1><p>'.esc_html(self::t('Bookings, customers and rewards.','Κρατήσεις, πελάτες και ανταμοιβές.')).'</p></header><nav class="kwb-tabs">';
+  echo '<div class="wrap kwb-dashboard"><header class="kwb-hero"><span>WORKSHOP BOOKINGS PRO</span><h1>'.esc_html(self::t('Your workshops, together','Όλα τα εργαστήριά σας μαζί')).'</h1><p>'.esc_html(self::t('Bookings, customers and rewards.','Κρατήσεις, πελάτες και ανταμοιβές.')).'</p></header><nav class="kwb-tabs">';
   foreach(array('analytics'=>self::t('Overview','Επισκόπηση'),'customers'=>self::t('Customers & loyalty','Πελάτες & επιβράβευση'),'broadcast'=>self::t('Workshop updates','Ενημερώσεις εργαστηρίων'),'referrals'=>self::t('Referrals','Συστάσεις'),'deliveries'=>self::t('Delivery history','Ιστορικό αποστολών')) as $key=>$label) {
    echo '<a '.($key===$tab?'aria-current="page"':'').' href="'.esc_url(self::url($key)).'">'.esc_html($label).'</a>';
   }
@@ -73,7 +73,7 @@ final class KWB_Dashboard {
   if ('referrals'===$tab) {
    self::form('settings',self::t('Referral rewards','Ανταμοιβές συστάσεων'));
    self::policy_fields(KWB_Rewards::settings(),true);
-   echo '<p>'.esc_html(self::t('Each new registered friend counts once after a completed, paid eligible booking. Refunded qualifying items stop counting. Each group of friends earns one coupon. Terms are fixed when the friend registers; changed settings apply to new registrations.','Κάθε νέος εγγεγραμμένος φίλος μετρά μία φορά μετά από ολοκληρωμένη, πληρωμένη επιλέξιμη κράτηση. Αγορές με επιστροφή δεν προσμετρώνται. Κάθε ομάδα φίλων δίνει ένα κουπόνι. Οι όροι οριστικοποιούνται κατά την εγγραφή του φίλου· οι αλλαγές ισχύουν για νέες εγγραφές.')).'</p>';
+   echo '<p>'.esc_html(self::t('Each new friend counts once by account or billing email, including guest checkout. A completed paid eligible booking is required. Refunded qualifying items stop counting. Terms are saved at registration or checkout.','Κάθε νέος φίλος μετρά μία φορά με λογαριασμό ή email χρέωσης, ακόμη και ως επισκέπτης. Απαιτείται ολοκληρωμένη πληρωμένη επιλέξιμη κράτηση. Οι επιστραφείσες αγορές δεν προσμετρώνται. Οι όροι αποθηκεύονται κατά την εγγραφή ή το checkout.')).'</p>';
    self::button(self::t('Save terms','Αποθήκευση όρων'));
   } elseif ('customers'===$tab) {
    $days=max(1,min(3650,absint($_GET['days']??90)));
@@ -103,11 +103,15 @@ final class KWB_Dashboard {
   } elseif ('deliveries'===$tab) { self::deliveries(); }
   elseif ('review'===$tab) { self::review(); }
   else { self::analytics(); }
-  echo '</div>';
+  echo '<p>Powered by e-iT – Information Technology &amp; e-commerce</p></div>';
  }
  public static function message_fields() {
-  self::input('subject',self::t('Email subject','Θέμα email'),'','text','maxlength="180" required');
-  echo '<label class="kwb-field"><span>'.esc_html(self::t('Message','Μήνυμα')).'</span><textarea name="message" rows="5" maxlength="10000" required></textarea></label>';
+  $templates=KWB_Messages::templates();$key=sanitize_key(is_scalar($_GET['template']??'')?$_GET['template']:'');$entry=$templates[$key]??array();
+  echo '<p>'.esc_html(self::t('Start from a saved template:','Έναρξη από αποθηκευμένο πρότυπο:')).' ';
+  foreach($templates as $id=>$row) { echo '<a class="button" href="'.esc_url(add_query_arg('template',$id,self::url(sanitize_key($_GET['tab']??'customers')))).'">'.esc_html($row['name']).'</a> '; }
+  echo '</p>';
+  self::input('subject',self::t('Email subject','Θέμα email'),$entry['subject']??'','text','maxlength="180" required');
+  wp_editor($entry['message']??'','kwb_campaign_body',array('textarea_name'=>'message','media_buttons'=>current_user_can('upload_files'),'textarea_rows'=>10));
   echo '<input id="kwb-image" type="hidden" name="image" value="0"><button type="button" class="button" id="kwb-select-image">'.esc_html(self::t('Choose image','Επιλογή εικόνας')).'</button><button type="button" class="button" id="kwb-remove-image">'.esc_html(self::t('Remove image','Αφαίρεση εικόνας')).'</button><div id="kwb-image-preview"></div>';
  }
  public static function analytics() {
@@ -123,7 +127,10 @@ final class KWB_Dashboard {
    echo '<tr><th>'.esc_html($row['name']).'</th><td>'.esc_html($row['monthly']).'</td><td>'.wp_kses_post(wc_price($row['monthly_revenue'],array('currency'=>$row['currency']))).'</td><td>'.esc_html($row['single']).'</td><td>'.wp_kses_post(wc_price($row['single_revenue'],array('currency'=>$row['currency']))).'</td></tr>';
   }
   if (!$rows) { echo '<tr><td colspan="5">'.esc_html(self::t('No bookings in this period.','Δεν υπάρχουν κρατήσεις σε αυτή την περίοδο.')).'</td></tr>'; }
-  echo '</tbody></table></div></section>';
+  echo '</tbody></table></div>';
+  self::form('report_export',self::t('Export report','Εξαγωγή αναφοράς'));
+  echo '<input type="hidden" name="from" value="'.esc_attr($from).'"><input type="hidden" name="to" value="'.esc_attr($to).'">';
+  self::button(self::t('Download CSV','Λήψη CSV'));echo '</section>';
  }
  public static function request($name,$default='') { return isset($_POST[$name]) && is_scalar($_POST[$name])?sanitize_text_field(wp_unslash($_POST[$name])):$default; }
  public static function handle() {
@@ -133,6 +140,14 @@ final class KWB_Dashboard {
   if ('settings'===$op) {
    $policy=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_policy($policy);
    update_option('kwb_referral_settings',$policy,false); $tab='referrals';
+  } elseif ('report_export'===$op) {
+   $from=self::request('from');$to=self::request('to');
+   if(!KWB_Booking::date_ok($from)||!KWB_Booking::date_ok($to)||$from>$to){wp_die('Invalid dates');}
+   nocache_headers();header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="workshop-revenue.csv"');header('X-Content-Type-Options: nosniff');
+   $out=fopen('php://output','w');fwrite($out,"\xEF\xBB\xBF");
+   fputcsv($out,array('Workshop','Currency','Monthly lines','Single lines','Monthly net revenue','Single net revenue'));
+   foreach(KWB_Commercial::report($from,$to) as $row){fputcsv($out,array_map(array(__CLASS__,'csv'),array_values($row)));}
+   fclose($out);exit;
   } elseif ('export'===$op) {
    nocache_headers(); header('Content-Type: text/csv; charset=UTF-8'); header('Content-Disposition: attachment; filename="inactive-workshop-customers.csv"'); header('X-Content-Type-Options: nosniff');
    $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF");
@@ -143,7 +158,7 @@ final class KWB_Dashboard {
    fclose($out); exit;
   } elseif ('preview'===$op) {
    $kind=self::request('kind'); if (!in_array($kind,array('loyalty','broadcast'),true)) { wp_die('Invalid campaign'); }
-   $config=array('kind'=>$kind,'subject'=>substr(self::request('subject'),0,180),'message'=>sanitize_textarea_field(wp_unslash($_POST['message']??'')),'image'=>absint(self::request('image')));
+   $config=array('kind'=>$kind,'subject'=>substr(self::request('subject'),0,180),'html'=>true,'message'=>KWB_Messages::clean(wp_unslash($_POST['message']??'')),'image'=>absint(self::request('image')));
    if (!$config['subject'] || !$config['message'] || strlen($config['message'])>30000) { wp_die(esc_html(self::t('Enter a subject and message.','Συμπληρώστε θέμα και μήνυμα.'))); }
    if ($config['image'] && (!wp_attachment_is_image($config['image']) || !current_user_can('edit_post',$config['image']))) { wp_die('Invalid image'); }
    if ('loyalty'===$kind) {
@@ -193,7 +208,7 @@ final class KWB_Dashboard {
  public static function review() {
   $id=sanitize_key($_GET['preview']??''); $config=get_transient('kwb_preview_'.get_current_user_id().'_'.$id);
   if (!$config) { echo '<p>'.esc_html(self::t('Preview expired.','Η προεπισκόπηση έληξε.')).'</p>';return; }
-  echo '<section class="kwb-card"><h2>'.esc_html($config['subject']).'</h2><p>'.nl2br(esc_html($config['message'])).'</p>';
+  echo '<section class="kwb-card"><h2>'.esc_html($config['subject']).'</h2>'.KWB_Messages::body($config);
   if ($config['image']) { echo wp_kses_post(wp_get_attachment_image($config['image'],'medium')); }
   if ('loyalty'===$config['kind']) {
    echo '<p>'.esc_html(self::terms($config['policy'])).'</p><p>'.esc_html(sprintf(self::t('Audience: %s. At least %d bookings across %d workshops.','Παραλήπτες: %s. Τουλάχιστον %d κρατήσεις σε %d εργαστήρια.'),$config['email']?:self::t('all matching customers','όλοι οι αντίστοιχοι πελάτες'),$config['bookings'],$config['workshops'])).'</p>';
@@ -229,7 +244,7 @@ final class KWB_Dashboard {
   echo '<div class="kwb-dashboard"><header class="kwb-hero"><h2>'.esc_html(self::t('My workshops','Τα εργαστήριά μου')).'</h2><p>'.esc_html(self::t('Your bookings, rewards and invitations.','Οι κρατήσεις, οι ανταμοιβές και οι προσκλήσεις σας.')).'</p></header>';
   $policy=KWB_Rewards::settings();
   if ($policy['enabled']) {
-   echo '<section class="kwb-card"><h3>'.esc_html(self::t('Invite your friends','Προσκαλέστε φίλους')).'</h3><p>'.esc_html(sprintf(self::t('Qualifying friends required per reward: %d.','Επιλέξιμοι φίλοι ανά ανταμοιβή: %d.'),$policy['friends'])).'</p><p>'.esc_html(self::terms($policy)).'</p><label class="kwb-field"><span>'.esc_html(self::t('Your personal referral link','Ο προσωπικός σας σύνδεσμος')).'</span><input readonly type="url" value="'.esc_attr(KWB_Rewards::link($user->ID)).'" onclick="this.select()"></label><p>'.esc_html(sprintf(self::t('Qualifying friends under the current terms: %d','Επιλέξιμοι φίλοι με τους τρέχοντες όρους: %d'),count(KWB_Rewards::qualified($user->ID,$policy)))).'</p><p>'.esc_html(self::t('Your friend must open this link, register within 30 days and complete an eligible paid booking. Each new friend counts once.','Ο φίλος σας πρέπει να ανοίξει τον σύνδεσμο, να εγγραφεί εντός 30 ημερών και να ολοκληρώσει επιλέξιμη πληρωμένη κράτηση. Κάθε νέος φίλος μετρά μία φορά.')).'</p></section>';
+   echo '<section class="kwb-card"><h3>'.esc_html(self::t('Invite your friends','Προσκαλέστε φίλους')).'</h3><p>'.esc_html(sprintf(self::t('Qualifying friends required per reward: %d.','Επιλέξιμοι φίλοι ανά ανταμοιβή: %d.'),$policy['friends'])).'</p><p>'.esc_html(self::terms($policy)).'</p><label class="kwb-field"><span>'.esc_html(self::t('Your personal referral link','Ο προσωπικός σας σύνδεσμος')).'</span><input readonly type="url" value="'.esc_attr(KWB_Rewards::link($user->ID)).'" onclick="this.select()"></label><p>'.esc_html(sprintf(self::t('Qualifying friends under the current terms: %d','Επιλέξιμοι φίλοι με τους τρέχοντες όρους: %d'),count(KWB_Rewards::qualified($user->ID,$policy)))).'</p><p>'.esc_html(self::t('Your friend must open this link and check out within 30 days, then complete an eligible paid booking. Guest checkout qualifies too. Each new friend counts once.','Ο φίλος σας πρέπει να ανοίξει τον σύνδεσμο και να κάνει checkout εντός 30 ημερών, ολοκληρώνοντας επιλέξιμη πληρωμένη κράτηση. Ισχύει και για επισκέπτες. Κάθε νέος φίλος μετρά μία φορά.')).'</p></section>';
   }
   echo '<section class="kwb-card"><h3>'.esc_html(self::t('My coupons','Τα κουπόνια μου')).'</h3>';
   $coupon_page=max(1,absint($_GET['coupon_page']??1));

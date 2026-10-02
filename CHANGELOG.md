@@ -1,3 +1,12 @@
+# 1.0.0 — Product family
+
+- Independently installable Lite and Pro ZIPs, with commercial modules and the external updater excluded from Lite.
+- Preserve existing booking metadata, original referral rows, settings and customer orders.
+- Guest checkout attribution persisted before payment; billing-email deduplication across guest and registered friends.
+- Native WordPress message templates, campaign rich text and revenue CSV exports.
+- Complete plugin-details modal, Lite directory readme, marketplace content and offline documentation.
+- Packaged functional/security tests across both editions and order-storage modes.
+
 # Changelog
 
 ## 0.7.0

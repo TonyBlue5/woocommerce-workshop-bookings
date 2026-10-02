@@ -4,3 +4,5 @@ Thumbs.db
 build/
 vendor/
 node_modules/
+
+ui-preview/

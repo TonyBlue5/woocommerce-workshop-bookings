@@ -41,7 +41,7 @@ $_POST=array('_kwb_weekly_schedule'=>'7|09:00|10:00|99');
 KWB_Booking::save($id);
 kwb_assert($before===get_post_meta($id,'_kwb_weekly_schedule',true),'admin save accepted without nonce');
 
-kwb_assert(class_exists('KWB_GitHub_Updater'),'secure updater missing');
+kwb_assert(('lite'===KWB_EDITION) !== class_exists('KWB_GitHub_Updater'),'edition updater isolation failed');
 kwb_assert(class_exists('KWB_RSVP'),'RSVP engine missing');
 kwb_assert(class_exists('KWB_Settings'),'settings engine missing');
 kwb_assert(!class_exists('KWB_Google_Calendar'),'API-free build unexpectedly loaded Google OAuth class');

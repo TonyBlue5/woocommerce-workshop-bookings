@@ -63,7 +63,7 @@ final class KWB_Campaigns {
     $claimed=$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}kwb_deliveries SET state='sending' WHERE id=%d AND state='pending'",$row->id));
     if (!$claimed) { continue; }
     try {
-     $message='<p>'.nl2br(esc_html($config['message'])).'</p>';
+     $message=KWB_Messages::body($config);
      if (!empty($config['image'])) {
       $url=wp_get_attachment_image_url($config['image'],'large');
       if ($url) { $message.='<p><img src="'.esc_url($url).'" alt="" style="max-width:100%;height:auto"></p>'; }

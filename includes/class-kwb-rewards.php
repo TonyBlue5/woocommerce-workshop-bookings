@@ -5,6 +5,8 @@ final class KWB_Rewards {
  public static function init() {
   add_action('template_redirect', array(__CLASS__,'capture'));
   add_action('user_register', array(__CLASS__,'register_friend'));
+  add_action('woocommerce_checkout_create_order', array(__CLASS__,'attribute_order'), 20);
+  add_action('woocommerce_store_api_checkout_update_order_meta', array(__CLASS__,'attribute_order'), 20);
   add_action('woocommerce_order_status_completed', array(__CLASS__,'qualify'));
   add_filter('woocommerce_coupon_discount_types', array(__CLASS__,'types'));
   add_filter('woocommerce_product_coupon_types', static function($types) { $types[]='kwb_reward'; return $types; });
@@ -51,6 +53,29 @@ final class KWB_Rewards {
   if (!$friend || !$referrer || $referrer->ID===$friend->ID || strtolower($friend->user_email)===strtolower($referrer->user_email)) { return; }
   add_user_meta($user_id,'_kwb_referrer',array('id'=>$referrer->ID,'policy'=>self::settings()),true);
  }
+ /** Persist signed attribution during checkout, before asynchronous payment webhooks. */
+ public static function attribute_order($order) {
+  if (!$order instanceof WC_Order || $order->get_meta('_kwb_referrer') || !self::settings()['enabled']) { return; }
+  $friend=(int)$order->get_customer_id();
+  $ref=$friend?(array)get_user_meta($friend,'_kwb_referrer',true):array();
+  if (!$ref && !$friend) {
+   $raw=$_COOKIE['kwb_ref']??'';
+   if (!is_string($raw)) { return; }
+   $parts=explode('|',wp_unslash($raw));
+   if (count($parts)!==3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || (int)$parts[1]<time() || (int)$parts[1]>time()+30*DAY_IN_SECONDS || !hash_equals(hash_hmac('sha256',$parts[0].'|'.$parts[1],wp_salt('auth')),$parts[2])) { return; }
+   $ref=array('id'=>absint($parts[0]),'policy'=>self::settings());
+  }
+  $owner=get_userdata(absint($ref['id']??0));
+  $email=strtolower(trim($order->get_billing_email()));
+  if (!$owner || !is_email($email) || $owner->ID===$friend || strtolower(trim($owner->user_email))===$email) { return; }
+  // A previous paid customer cannot become a new friend by checking out as a guest.
+  if (!$friend) {
+   $prior=wc_get_orders(array('billing_email'=>$email,'status'=>array('processing','completed'),'exclude'=>array($order->get_id()),'limit'=>1,'return'=>'ids'));
+   if ($prior) { return; }
+  }
+  $ref['email']=$email;
+  $order->update_meta_data('_kwb_referrer',$ref);
+ }
  public static function eligible_order($order,$policy) {
   if (!$order || !$order->has_status('completed')) { return false; }
   foreach ($order->get_items() as $item) {
@@ -63,20 +88,33 @@ final class KWB_Rewards {
  public static function qualify($order_id) {
   global $wpdb;
   $order=wc_get_order($order_id);
-  if (!$order || !$order->get_customer_id()) { return; }
+  if (!$order) { return; }
   $friend=$order->get_customer_id();
-  $ref=(array)get_user_meta($friend,'_kwb_referrer',true);
+  $ref=(array)$order->get_meta('_kwb_referrer');
+  if (!$ref && $friend) { $ref=(array)get_user_meta($friend,'_kwb_referrer',true); }
+  $email=strtolower(trim($order->get_billing_email()));
+  if (isset($ref['email']) && $ref['email']!==$email) { return; }
   $owner=get_userdata(absint($ref['id']??0));
   if (!$owner || $owner->ID===$friend || !isset($ref['policy']) || !self::eligible_order($order,$ref['policy'])) { return; }
   if (strtolower($owner->user_email)===strtolower($order->get_billing_email()) || !is_email($order->get_billing_email())) { return; }
-  $lock='reward_'.$owner->ID;
+  $lock='referral_identity';
   if (!KWB_Commercial::lock($lock)) { throw new RuntimeException('Reward lock unavailable; retry order completion.'); }
   try {
-   $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}kwb_referrals (friend_id,email_hash,referrer_id,order_id,policy) VALUES (%d,%s,%d,%d,%s)", $friend,hash('sha256',strtolower($order->get_billing_email())),$owner->ID,$order_id,wp_json_encode($ref['policy'])));
-   $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE friend_id=%d",$friend));
+   $hash=hash('sha256',$email);
+   $table=$wpdb->prefix.'kwb_referrals';
+   $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE email_hash=%s OR (friend_id=%d AND friend_id>0)",$hash,$friend));
+   if (!$existing) {
+    $table=$wpdb->prefix.'kwb_guest_referrals';
+    $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_guest_referrals WHERE email_hash=%s",$hash));
+   }
+   if (!$existing) {
+    $table=$wpdb->prefix.($friend?'kwb_referrals':'kwb_guest_referrals');
+    $inserted=$wpdb->insert($table,array('friend_id'=>$friend,'email_hash'=>$hash,'referrer_id'=>$owner->ID,'order_id'=>$order_id,'policy'=>wp_json_encode($ref['policy'])),array('%d','%s','%d','%d','%s'));
+    if (false===$inserted) { throw new RuntimeException('Could not record referral; retry order completion.'); }
+   }
    if ($existing && (int)$existing->referrer_id===$owner->ID && !self::eligible_order(wc_get_order($existing->order_id),json_decode($existing->policy,true))) {
     // A new paid booking can replace a refunded qualifying purchase, but never count the friend twice.
-    $wpdb->update($wpdb->prefix.'kwb_referrals',array('order_id'=>$order_id,'email_hash'=>hash('sha256',strtolower($order->get_billing_email()))),array('friend_id'=>$friend));
+    $wpdb->update($table,array('order_id'=>$order_id),array('email_hash'=>$existing->email_hash));
    }
    $rows=self::qualified($owner->ID,$ref['policy']);
    $tiers=(int)floor(count($rows)/$ref['policy']['friends']);
@@ -92,6 +130,7 @@ final class KWB_Rewards {
  public static function qualified($owner,$policy) {
   global $wpdb;
   $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE referrer_id=%d",$owner));
+  $rows=array_merge($rows,$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_guest_referrals WHERE referrer_id=%d",$owner)));
   return array_values(array_filter($rows,static function($row)use($policy){
    return self::policy_key(json_decode($row->policy,true))===self::policy_key($policy) && self::eligible_order(wc_get_order($row->order_id),$policy);
   }));
