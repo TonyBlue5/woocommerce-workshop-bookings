@@ -69,6 +69,9 @@ No. Order history and settings are retained. Remove personal data through your s
 = Are there any hosted dependencies? =
 No external booking, licensing or update service is required. Email uses WordPress and the configured mail transport.
 
+= How are pending places handled? =
+New checkout requests reserve their places while payment is pending. Cancel abandoned pending orders to release these holds; use WooCommerce cleanup where applicable. Checkout changes use a database lock, and late payments recheck capacity before confirming a booking. If a gateway has already collected money and the place was reallocated after cancellation, review the order note and refund or reschedule manually. Administrator-created orders and manual status overrides require the merchant to check capacity.
+
 == Screenshots ==
 
 1. Visual booking calendar with remaining places.

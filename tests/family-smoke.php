@@ -34,6 +34,9 @@ kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'second guest did 
 for($i=0;$i<3;$i++){KWB_Rewards::qualify($b->get_id());}
 $coupons=get_posts(array('post_type'=>'shop_coupon','meta_key'=>'_kwb_owner','meta_value'=>$owner,'numberposts'=>-1));
 kwbf_assert(count($coupons)===1,'replayed guest completion issued duplicate coupon');
+// Re-running the additive schema upgrade must retain old and guest referral rows.
+update_option('kwb_commercial_schema','1');KWB_Commercial::install();
+kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'schema upgrade lost referral history');
 $again=kwbf_order($pid,'guest-a@example.org');$again->update_status('completed');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'repeat billing email counted twice');
 $friend=wp_insert_user(array('user_login'=>'family-guest-account','user_pass'=>wp_generate_password(),'user_email'=>'guest-a@example.org'));

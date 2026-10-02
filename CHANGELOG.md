@@ -5,6 +5,8 @@
 - Guest checkout attribution persisted before payment; billing-email deduplication across guest and registered friends.
 - Native WordPress message templates, campaign rich text and revenue CSV exports.
 - Complete plugin-details modal, Lite directory readme, marketplace content and offline documentation.
+- Shared checkout/attendance locking, pending-seat reservations and late-payment revalidation.
+- Searchable multi-workshop reward restrictions and multiple campaign recipients.
 - Packaged functional/security tests across both editions and order-storage modes.
 
 # Changelog

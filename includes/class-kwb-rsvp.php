@@ -110,9 +110,7 @@ final class KWB_RSVP {
 			wp_nonce_field('kwb_rsvp_confirm');echo '<button type="submit">'.esc_html('yes'===$answer?KWB_I18n::t('yes_default'):KWB_I18n::t('no_default')).'</button></form></body></html>';exit;
 		}
 		if(!isset($_POST['_wpnonce'])||!is_string($_POST['_wpnonce'])||!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'])),'kwb_rsvp_confirm')){status_header(403);exit;}
-		$lock='attendance_'.$pid;
-		if(!KWB_Commercial::lock($lock)){status_header(409);exit;}
-		register_shutdown_function(static function()use($lock){KWB_Commercial::unlock($lock);});
+		if(!KWB_Booking::lock_capacity()){status_header(409);exit;}
 		$item=new WC_Order_Item_Product($item_id);
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$was_declined=in_array((string)$occ,array_map('strval',$no),true);

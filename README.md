@@ -38,3 +38,7 @@ The manually dispatched release workflow keeps the existing RSA public key and G
 See `marketplace/documentation.html`, `marketplace/listing-copy.html`, `marketplace/assets-and-access.txt` and `editions/lite-readme.txt`. The exact approved logo file is not present; the documented palette and white cube lettering direction are preserved for final asset production.
 
 GPL-2.0-or-later.
+
+## Pending capacity
+
+New checkout requests reserve their places while payment is pending. Cancel abandoned pending orders to release these holds; use WooCommerce cleanup where applicable. Checkout and attendance changes share a database lock, and late payments recheck capacity before confirming a booking. If a gateway has already collected money and the place was reallocated after cancellation, review the order note and refund or reschedule manually. Administrator-created orders and manual status overrides require the merchant to check capacity.

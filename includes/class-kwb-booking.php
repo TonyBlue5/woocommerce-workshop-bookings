@@ -18,7 +18,11 @@ final class KWB_Booking {
 	const META_LOCATION='_kwb_location_override';
 	const META_CAL_DESCRIPTION='_kwb_calendar_description';
 
+	private static $capacity_locked=false;
 	public static function init(){
+		add_action('woocommerce_checkout_create_order',array(__CLASS__,'reserve_order'),5);
+		add_action('woocommerce_store_api_checkout_update_order_meta',array(__CLASS__,'reserve_order'),5);
+		add_action('woocommerce_pre_payment_complete',array(__CLASS__,'reserve_payment'),5);
 		add_filter('woocommerce_product_data_tabs',array(__CLASS__,'tab'));
 		add_action('woocommerce_product_data_panels',array(__CLASS__,'panel'));
 		add_action('admin_enqueue_scripts',array(__CLASS__,'admin_assets'));
@@ -323,7 +327,61 @@ final class KWB_Booking {
 
 	public static function remaining($id,$o){return max(0,absint($o['capacity'])-self::booked($id,$o['id']));}
 	public static function occurrence_declined($item,$oid){$d=(array)$item->get_meta('_kwb_declined_occurrences',true);return in_array((string)$oid,array_map('strval',$d),true);}
-	public static function booked($id,$oid){$orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold'),'limit'=>-1,'return'=>'ids'));$n=0;foreach($orders as$orid){$order=wc_get_order($orid);if(!$order)continue;foreach($order->get_items('line_item')as$item){$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();if((int)$pid!==(int)$id||(KWB_Settings::get('release_on_no',1)&&self::occurrence_declined($item,$oid)))continue;$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;foreach($list as$o)if(isset($o['id'])&&hash_equals((string)$oid,(string)$o['id'])){$n+=absint($item->get_quantity());break;}}}return$n;}
+ /** Serialize seat-changing checkout and RSVP requests until the order/item is saved. */
+ public static function lock_capacity(){
+  if(self::$capacity_locked)return true;
+  global $wpdb;$name='kwb_capacity_'.md5($wpdb->prefix);
+  if('1'!==(string)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 5)',$name)))return false;
+  self::$capacity_locked=true;register_shutdown_function(array(__CLASS__,'unlock_capacity'));return true;
+ }
+ public static function unlock_capacity(){
+  if(!self::$capacity_locked)return;
+  global $wpdb;$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)','kwb_capacity_'.md5($wpdb->prefix)));self::$capacity_locked=false;
+ }
+ public static function reserve_payment($id){
+  $order=wc_get_order($id);if(!$order||$order->is_paid())return;
+  try{self::reserve_order($order);$order->save();}
+  catch(Exception $error){$order->add_order_note('Workshop capacity could not be confirmed. Check payment and availability before fulfilling or refunding this order.');throw $error;}
+ }
+ public static function reserve_order($order){
+  if(!$order instanceof WC_Order)return;
+  $needed=array();
+  foreach($order->get_items() as $item){
+   $pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+   foreach(self::item_occurrences($item) as $occ){
+    $key=$pid.'|'.$occ['id'];
+    if(!isset($needed[$key]))$needed[$key]=array('pid'=>$pid,'occ'=>$occ,'qty'=>0);
+    $needed[$key]['qty']+=max(0,(int)$item->get_quantity());
+   }
+  }
+  if(!$needed)return;
+  if(!self::lock_capacity())throw new Exception(KWB_I18n::t('form_expired'));
+  foreach($needed as $entry){
+   $pid=$entry['pid'];$occ=$entry['occ'];$fresh=self::month_occurrences($pid,substr($occ['date'],0,7),true);
+   $current=$fresh[$occ['id']]??null;
+   if(!$current || !self::enabled($pid) || $entry['qty']>max(0,(int)$current['capacity']-self::booked($pid,$occ['id'],$order->get_id())))throw new Exception(KWB_I18n::t('availability_changed',array('slot'=>self::label($occ))));
+  }
+  // Pending checkout reservations last until payment, cancellation or WooCommerce's own cleanup.
+  $order->update_meta_data('_kwb_capacity_hold',1);
+ }
+ public static function booked($id,$oid,$exclude_order=0){
+  $n=0;
+  for($page=1;;$page++){
+   $orders=wc_get_orders(array('status'=>array('wc-processing','wc-completed','wc-on-hold','wc-pending','wc-checkout-draft'),'limit'=>100,'page'=>$page,'orderby'=>'ID','order'=>'ASC'));
+   foreach($orders as $order){
+    if((int)$order->get_id()===(int)$exclude_order)continue;
+    if($order->has_status(array('pending','checkout-draft'))&&!$order->get_meta('_kwb_capacity_hold'))continue;
+    foreach($order->get_items('line_item') as $item){
+     $pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+     if((int)$pid!==(int)$id||(KWB_Settings::get('release_on_no',1)&&self::occurrence_declined($item,$oid)))continue;
+     $list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;
+     foreach($list as $occ)if(isset($occ['id'])&&hash_equals((string)$oid,(string)$occ['id'])){$n+=max(0,absint($item->get_quantity())-absint($order->get_qty_refunded_for_item($item->get_id())));break;}
+    }
+   }
+   if(count($orders)<100)break;
+  }
+  return $n;
+ }
 
 	public static function item_occurrences($item){$list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);$out=array();if(is_array($list))foreach($list as$o)if(!empty($o['id'])&&self::date_ok($o['date']??'')&&self::time_ok($o['start']??'')&&self::time_ok($o['end']??''))$out[]=self::hydrate($o);return$out;}
 

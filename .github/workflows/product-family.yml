@@ -15,6 +15,19 @@ jobs:
         edition: [lite, pro]
         storage: [legacy, hpos]
         php: ['7.4', '8.4']
+        wordpress: [latest]
+        woocommerce: [latest]
+        include:
+          - edition: lite
+            storage: legacy
+            php: '7.4'
+            wordpress: '6.4'
+            woocommerce: '8.0.0'
+          - edition: pro
+            storage: hpos
+            php: '7.4'
+            wordpress: '6.4'
+            woocommerce: '8.0.0'
     services:
       mysql:
         image: mysql:8.0
@@ -41,6 +54,8 @@ jobs:
         env:
           EDITION: ${{ matrix.edition }}
           STORAGE: ${{ matrix.storage }}
+          WP_VERSION: ${{ matrix.wordpress }}
+          WC_VERSION: ${{ matrix.woocommerce }}
         run: |
           set -euo pipefail
           if ! command -v wp >/dev/null; then
@@ -48,10 +63,10 @@ jobs:
             sudo install -m 755 /tmp/wp-cli.phar /usr/local/bin/wp
           fi
           mkdir -p /tmp/family
-          wp core download --path=/tmp/family
+          wp core download --path=/tmp/family --version="$WP_VERSION"
           wp config create --path=/tmp/family --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
           wp core install --path=/tmp/family --url=http://localhost --title=FamilyTest --admin_user=admin --admin_password='Only-For-CI-2026!' --admin_email=test@example.org --skip-email
-          wp plugin install woocommerce --activate --path=/tmp/family
+          wp plugin install woocommerce --version="$WC_VERSION" --activate --path=/tmp/family
           slug=workshop-bookings-for-woocommerce
           if [ "$EDITION" = pro ]; then slug=workshop-bookings-pro-for-woocommerce; fi
           wp plugin install "build/$slug.zip" --activate --path=/tmp/family
@@ -71,6 +86,14 @@ jobs:
           fi
           wp core version --path=/tmp/family
           wp plugin get woocommerce --field=version --path=/tmp/family
+          KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-capacity.php" --path=/tmp/family
+          pids=""
+          for i in 0 1; do
+            KWB_TEST_MODE=reserve KWB_ORDER_INDEX=$i wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-capacity.php" --path=/tmp/family &
+            pids="$pids $!"
+          done
+          for pid in $pids; do wait "$pid"; done
+          KWB_TEST_MODE=assert wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-capacity.php" --path=/tmp/family | grep concurrent-capacity-ok
           KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/migration-smoke.php" --path=/tmp/family
           other=workshop-bookings-pro-for-woocommerce
           if [ "$EDITION" = pro ]; then other=workshop-bookings-for-woocommerce; fi
