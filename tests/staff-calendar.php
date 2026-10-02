@@ -4,7 +4,7 @@ function kwbs_assert($ok,$message){if(!$ok){throw new RuntimeException($message)
 function kwbs_create($input){try{return KWB_Admin_Calendar::create($input);}finally{KWB_Booking::unlock_capacity();}}
 function kwbs_attend($oid,$iid,$pid,$occ,$op){try{KWB_Admin_Calendar::attendance($oid,$iid,$pid,$occ,$op);}finally{KWB_Booking::unlock_capacity();}}
 add_filter('pre_wp_mail',static function(){return true;});
-$admin=get_user_by('login','admin');wp_set_current_user($admin->ID);
+$admins=get_users(array('role'=>'administrator','number'=>1));$admin=$admins[0];wp_set_current_user($admin->ID);
 $manager=wp_insert_user(array('user_login'=>'calendar-manager','user_pass'=>wp_generate_password(),'role'=>'shop_manager'));
 $p=new WC_Product_Simple();$p->set_name('Telephone workshop');$p->set_regular_price(20);$p->set_virtual(true);$pid=$p->save();
 foreach(array('_kwb_enabled'=>'yes','_kwb_single_enabled'=>'yes','_kwb_single_price'=>'20','_kwb_monthly_enabled'=>'yes','_kwb_monthly_price'=>'120') as $key=>$value){update_post_meta($pid,$key,$value);}

@@ -11,6 +11,7 @@ for(const edition of ['lite','pro']){
  const slug=edition==='lite'?'workshop-bookings-for-woocommerce':'workshop-bookings-pro-for-woocommerce';
  const files={};let main=read('woocommerce-workshop-bookings.php');
  if(edition==='lite'){
+  main=main.replace('reminders, RSVP, shared capacity','basic reminders, shared capacity');
   main=main.replace('Workshop Bookings Pro for WooCommerce by e-iT','Workshop Bookings Lite for WooCommerce').replace("define('KWB_EDITION','pro')","define('KWB_EDITION','lite')").replace(/^ \* Update URI:.*\n/m,'').replace('workshop-bookings-pro-for-woocommerce',slug);
   main=main.replace(/^require_once.*class-kwb-(updater|commercial|rewards|campaigns|dashboard|messages|admin-calendar)\.php.*\n/gm,'').replace(/^KWB_GitHub_Updater::init\(\);\n/m,'').replace(/^\s*KWB_(Commercial|Messages|Admin_Calendar)::init\(\);\n/gm,'');
  }
