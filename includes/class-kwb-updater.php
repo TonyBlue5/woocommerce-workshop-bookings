@@ -12,6 +12,12 @@ final class KWB_GitHub_Updater {
 		add_filter('plugins_api',array(__CLASS__,'details'),20,3);
 		add_filter('upgrader_pre_download',array(__CLASS__,'verify_download'),10,4);
 		add_action('admin_init',array(__CLASS__,'maybe_force_refresh'));
+		add_filter('plugin_row_meta',array(__CLASS__,'row_meta'),10,2);
+	}
+	public static function row_meta($links,$file){
+		if($file!==plugin_basename(KWB_PLUGIN_FILE))return $links;
+		$url=add_query_arg(array('tab'=>'plugin-information','plugin'=>self::SLUG,'TB_iframe'=>'true','width'=>772,'height'=>650),self_admin_url('plugin-install.php'));
+		$links[]='<a class="thickbox open-plugin-details-modal" href="'.esc_url($url).'">'.esc_html(KWB_I18n::is_greek()?'Προβολή λεπτομερειών':'View details').'</a>';return $links;
 	}
 
 	public static function maybe_force_refresh(){

@@ -66,7 +66,11 @@ jobs:
           wp core download --path=/tmp/family --version="$WP_VERSION"
           wp config create --path=/tmp/family --dbname=wordpress --dbuser=root --dbpass=root --dbhost=127.0.0.1 --skip-check
           wp core install --path=/tmp/family --url=http://localhost --title=FamilyTest --admin_user=admin --admin_password='Only-For-CI-2026!' --admin_email=test@example.org --skip-email
-          wp plugin install woocommerce --version="$WC_VERSION" --activate --path=/tmp/family
+          if [ "$WC_VERSION" = latest ]; then
+            wp plugin install woocommerce --activate --path=/tmp/family
+          else
+            wp plugin install woocommerce --version="$WC_VERSION" --activate --path=/tmp/family
+          fi
           slug=workshop-bookings-for-woocommerce
           if [ "$EDITION" = pro ]; then slug=workshop-bookings-pro-for-woocommerce; fi
           wp plugin install "build/$slug.zip" --activate --path=/tmp/family
