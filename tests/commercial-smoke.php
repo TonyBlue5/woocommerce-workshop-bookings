@@ -18,6 +18,7 @@ wp_set_current_user($admin->ID);
 
 $product=new WC_Product_Simple();$product->set_name('Commercial workshop');$product->set_regular_price(40);$product->set_virtual(true);$pid=$product->save();
 update_post_meta($pid,'_kwb_enabled','yes');
+update_post_meta($pid,'_kwb_monthly_enabled','yes');update_post_meta($pid,'_kwb_monthly_price','40');
 $policy=KWB_Rewards::sanitize(array('enabled'=>1,'friends'=>2,'percent'=>100,'months'=>1,'mode'=>'monthly','product'=>$pid,'expiry'=>90));
 update_option('kwb_referral_settings',$policy);
 function kwbc_order($pid,$customer,$type,$total=80) {
@@ -44,7 +45,7 @@ wp_set_current_user($owner);kwbc_assert(KWB_Rewards::valid(true,$coupon),'owner 
 wp_set_current_user($friends[0]);kwbc_assert(!KWB_Rewards::valid(true,$coupon),'another customer can use reward');
 
 // Refunded qualifying items revoke eligibility immediately without mutating booking metadata.
-$order=$orders[0];$item=reset($order->get_items());$metadata=$item->get_meta('_kwb_occurrences');
+$order=$orders[0];$items=$order->get_items();$item=reset($items);$metadata=$item->get_meta('_kwb_occurrences');
 $refund=wc_create_refund(array('order_id'=>$order->get_id(),'amount'=>10,'line_items'=>array($item->get_id()=>array('qty'=>0,'refund_total'=>10,'refund_tax'=>array()))));
 kwbc_assert(!is_wp_error($refund),'refund setup failed');
 wp_set_current_user($owner);kwbc_assert(!KWB_Rewards::valid(true,$coupon),'partial refund did not revoke qualifying reward');
@@ -69,6 +70,7 @@ WC()->cart=new WC_Cart();
 remove_filter('woocommerce_add_to_cart_validation',array('KWB_Booking','validate'),10);
 $cart_product=wc_get_product($pid);$cart_product->set_price(80);
 $key=WC()->cart->add_to_cart($pid,3,0,array(),$values);
+kwbc_assert((bool)$key,'test booking could not be added to the cart: '.wp_json_encode(wc_get_notices()));
 $cart=WC()->cart->get_cart();$cart[$key]['data']->set_price(80);WC()->cart->set_cart_contents($cart);
 kwbc_assert(WC()->cart->apply_coupon($loyalty->get_code()),'reward coupon rejected by cart');
 WC()->cart->calculate_totals();
@@ -87,6 +89,33 @@ kwbc_assert(strpos($sent[0]['to'],',')===false,'broadcast exposed recipient list
 kwbc_assert(KWB_Commercial::csv_cell('=HYPERLINK("x")')[0]==="'",'CSV formula injection');
 kwbc_assert(KWB_Commercial::csv_cell("\t=1+1")[0]==="'",'CSV whitespace formula injection');
 kwbc_assert(KWB_Commercial::csv_cell('Normal')==='Normal','CSV corrupted normal text');
+
+// Real POST handler rejects missing nonce before changing settings.
+$die_handler=static function(){return static function(){throw new RuntimeException('expected-wp-die');};};
+add_filter('wp_die_handler',$die_handler,999);
+$_POST=array('op'=>'settings','friends'=>99);$_REQUEST=array();$blocked=false;
+try { KWB_Dashboard::handle(); } catch (RuntimeException $e) { $blocked='expected-wp-die'===$e->getMessage(); }
+kwbc_assert($blocked && KWB_Rewards::settings()['friends']===2,'admin POST without nonce changed settings');
+wp_set_current_user($editor);$blocked=false;
+try { KWB_Dashboard::handle(); } catch (RuntimeException $e) { $blocked='expected-wp-die'===$e->getMessage(); }
+kwbc_assert($blocked,'unauthorized role reached admin POST action');
+remove_filter('wp_die_handler',$die_handler,999);$_POST=array();wp_set_current_user($admin->ID);
+
+// Signed registration attribution rejects tampering and accepts an unexpired signature.
+$payload=$owner.'|'.(time()+DAY_IN_SECONDS);
+$_COOKIE['kwb_ref']=$payload.'|invalid';
+$unsigned=wp_insert_user(array('user_login'=>'unsigned-friend','user_pass'=>wp_generate_password(),'user_email'=>'unsigned@example.org'));
+kwbc_assert(!get_user_meta($unsigned,'_kwb_referrer',true),'tampered attribution accepted');
+$_COOKIE['kwb_ref']=$payload.'|'.hash_hmac('sha256',$payload,wp_salt('auth'));
+$signed=wp_insert_user(array('user_login'=>'signed-friend','user_pass'=>wp_generate_password(),'user_email'=>'signed@example.org'));
+kwbc_assert((int)get_user_meta($signed,'_kwb_referrer',true)['id']===$owner,'signed registration lost attribution');
+unset($_COOKIE['kwb_ref']);
+
+// Cancelling a date invalidates an already populated cart without deleting the order's occurrences.
+$cart=WC()->cart->get_cart();$cart[$key]['kwb_booking']['occurrences']=array(array('date'=>'2030-10-08'));WC()->cart->set_cart_contents($cart);
+update_post_meta($pid,'_kwb_blackouts','2030-10-08');wc_clear_notices();KWB_Commercial::check_cancelled_cart();
+kwbc_assert(wc_notice_count('error')>0,'cancelled date still accepted in cart');
+wc_clear_notices();
 
 // Customer output does not reveal another customer's bookings or coupon.
 wp_set_current_user($friends[1]);ob_start();KWB_Dashboard::account();$html=ob_get_clean();

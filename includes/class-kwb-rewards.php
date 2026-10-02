@@ -73,11 +73,16 @@ final class KWB_Rewards {
   if (!KWB_Commercial::lock($lock)) { throw new RuntimeException('Reward lock unavailable; retry order completion.'); }
   try {
    $wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->prefix}kwb_referrals (friend_id,email_hash,referrer_id,order_id,policy) VALUES (%d,%s,%d,%d,%s)", $friend,hash('sha256',strtolower($order->get_billing_email())),$owner->ID,$order_id,wp_json_encode($ref['policy'])));
+   $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE friend_id=%d",$friend));
+   if ($existing && (int)$existing->referrer_id===$owner->ID && !self::eligible_order(wc_get_order($existing->order_id),json_decode($existing->policy,true))) {
+    // A new paid booking can replace a refunded qualifying purchase, but never count the friend twice.
+    $wpdb->update($wpdb->prefix.'kwb_referrals',array('order_id'=>$order_id,'email_hash'=>hash('sha256',strtolower($order->get_billing_email()))),array('friend_id'=>$friend));
+   }
    $rows=self::qualified($owner->ID,$ref['policy']);
    $tiers=(int)floor(count($rows)/$ref['policy']['friends']);
    for ($tier=1;$tier<=$tiers;$tier++) {
     $key='referral:'.$owner->ID.':'.self::policy_key($ref['policy']).':'.$tier;
-    $coupon=self::coupon($key,$owner->user_email,$ref['policy'],$owner->ID);
+    $coupon=self::coupon($key,$owner->user_email,$ref['policy'],$owner->ID,$tier*$ref['policy']['friends']);
     $coupon->update_meta_data('_kwb_milestone',$tier*$ref['policy']['friends']);
     $coupon->save();
    }
@@ -91,7 +96,7 @@ final class KWB_Rewards {
    return self::policy_key(json_decode($row->policy,true))===self::policy_key($policy) && self::eligible_order(wc_get_order($row->order_id),$policy);
   }));
  }
- public static function coupon($key,$email,$policy,$owner=0) {
+ public static function coupon($key,$email,$policy,$owner=0,$milestone=0) {
   $code='kwb-'.substr(hash_hmac('sha256',$key,wp_salt('auth')),0,24);
   $existing=wc_get_coupon_id_by_code($code);
   if ($existing) { return new WC_Coupon($existing); }
@@ -103,6 +108,7 @@ final class KWB_Rewards {
   $coupon->set_date_expires(time()+$policy['expiry']*DAY_IN_SECONDS);
   $coupon->update_meta_data('_kwb_policy',$policy);
   $coupon->update_meta_data('_kwb_owner',absint($owner));
+  $coupon->update_meta_data('_kwb_milestone',absint($milestone));
   $coupon->update_meta_data('_kwb_recipient',strtolower($email));
   $coupon->save();
   return $coupon;
