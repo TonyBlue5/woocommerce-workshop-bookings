@@ -1,0 +1,44 @@
+WORKSHOP BOOKINGS — ASSETS AND NEXT-STEP ACCESS
+
+Brand direction
+Product names: Workshop Bookings Lite for WooCommerce; Workshop Bookings Pro for WooCommerce by e-iT.
+Publisher: Powered by e-iT – Information Technology & e-commerce.
+Palette: navy #062C50, blue #158FE8, cyan #20D7CE, background #F7FAFC.
+Use the approved cube logo with white e and it lettering. The prior conversation exposes no downloadable approved logo file, and the repository contains no logo asset. Supply the approved SVG or high-resolution transparent PNG before final icon/banner production. Do not substitute an invented final logo.
+
+WordPress.org asset slots (separate SVN /assets, not executable plugin code)
+icon-128x128.png — square product mark
+icon-256x256.png — high-resolution product mark
+Optional icon.svg with PNG fallback
+banner-772x250.png — Lite product banner
+banner-1544x500.png — high-resolution banner
+screenshot-1.png — booking calendar with remaining places
+screenshot-2.png — schedule, prices and capacity editor
+screenshot-3.png — single/monthly cart lines
+screenshot-4.png — order calendar links
+screenshot-5.png — Greek interface
+Match the numbered Lite readme captions. Capture the actual plugin using synthetic orders. Check both desktop and mobile. Directory assets are requirements/slots at this stage, not fabricated product screenshots.
+References checked 3 October 2026:
+https://developer.wordpress.org/plugins/wordpress-org/plugin-assets/
+https://developer.wordpress.org/plugins/wordpress-org/how-your-readme-txt-works/
+https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/
+
+CodeCanyon package
+plugin/workshop-bookings-pro-for-woocommerce.zip — upload this inner ZIP to WordPress
+documentation/index.html — offline installation, configuration, migration and troubleshooting
+marketplace/listing-copy.html — English listing and English/Greek landing content
+marketplace/assets-and-access.txt — this checklist
+LICENSE.txt and CHANGELOG.txt
+Prepare thumbnail and preview artwork using the current uploader's size requirements, approved logo and real screenshots. Confirm screenshot, preview and gallery dimensions in the author upload screen before export.
+Requirements: https://help.author.envato.com/hc/en-us/articles/360000510603-WordPress-Plugin-Requirements
+
+Access needed AFTER test ZIP approval
+1. GitHub/signing: existing repository write and Actions access. The signing key should stay in the existing KWB_RELEASE_SIGNING_KEY Actions secret; never paste it into chat. Verify secret availability and run the reviewed signed-release workflow only when release publication is explicitly approved. This task does not publish a release.
+2. Envato/CodeCanyon: an eligible Author account and a user-controlled authenticated browser session to create the item draft, fill metadata, upload the final package and preview images. The owner completes identity, tax and payout steps. Confirm exclusive/non-exclusive status before enabling another sales channel. An API token, if later needed for purchase verification, must have only the necessary permissions and be stored server-side, never embedded in the plugin.
+3. WordPress.org: an account with verified email for initial plugin submission. Confirm the contributor username (the readme uses tonyblue5) and approved slug; slug availability is not guaranteed. Once approved, add the publisher/developer as a plugin committer and use a scoped SVN password through a credential manager. No password should be pasted into chat.
+4. Licensing/checkout: choose a provider and grant product-management access or provide a signed-in owner session. Supply product/site-tier definitions, support/renewal terms, VAT/tax display choices, checkout URLs and a sandbox environment. Configure API keys, webhook signing secrets, entitlement endpoint and site activations through the host's secret store. Current Pro has signed update verification but no paid license enforcement or checkout integration. Those require the selected provider; signing proves publisher authenticity, not purchase entitlement.
+5. it-e.gr: temporary WordPress administrator access on a staging clone for page-builder/theme/media setup, with the required editor licenses already active. Provide the page builder in use, approved logo and screenshots, support email, final pricing, purchase/demo/docs URLs and privacy/terms links. SFTP/hosting access is only needed if theme files or deployment require it. Use a separate temporary account and revoke it after delivery. Production deployment requires a later explicit instruction.
+
+Unresolved business inputs
+Dedicated support email and response commitments; final annual prices and tax wording; licensing provider; final site allowances; renewal/launch-discount terms; demo and documentation URLs; marketplace exclusivity; approved logo source.
+No marketplace listing or it-e.gr changes have been made by this build task.

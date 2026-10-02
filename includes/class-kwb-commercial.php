@@ -25,10 +25,19 @@ final class KWB_Commercial {
  }
 
  public static function install() {
-  if ( '1' === get_option('kwb_commercial_schema') ) { return; }
+  if ( '2' === get_option('kwb_commercial_schema') ) { return; }
   global $wpdb;
   require_once ABSPATH . 'wp-admin/includes/upgrade.php';
   $charset = $wpdb->get_charset_collate();
+  dbDelta("CREATE TABLE {$wpdb->prefix}kwb_guest_referrals (
+   email_hash varchar(64) NOT NULL,
+   friend_id bigint(20) unsigned NOT NULL DEFAULT 0,
+   referrer_id bigint(20) unsigned NOT NULL,
+   order_id bigint(20) unsigned NOT NULL,
+   policy longtext NOT NULL,
+   PRIMARY KEY  (email_hash),
+   KEY referrer_id (referrer_id)
+  ) $charset;");
   dbDelta("CREATE TABLE {$wpdb->prefix}kwb_referrals (
    friend_id bigint(20) unsigned NOT NULL,
    email_hash varchar(64) NOT NULL,
@@ -48,8 +57,8 @@ final class KWB_Commercial {
    UNIQUE KEY recipient (campaign,email),
    KEY state (state)
   ) $charset;");
-  if ( $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_referrals'") && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_deliveries'") ) {
-   update_option('kwb_commercial_schema', '1', false);
+  if ( $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_referrals'") && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_deliveries'") && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_guest_referrals'") ) {
+   update_option('kwb_commercial_schema', '2', false);
   }
  }
 

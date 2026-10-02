@@ -31,7 +31,8 @@ final class KWB_Campaigns {
    $recipients=array();
    if ('loyalty'===$config['kind']) {
     foreach (KWB_Commercial::customers() as $email=>$row) {
-     if ($row['bookings'] >= $config['bookings'] && count($row['workshops']) >= $config['workshops'] && (!$config['email'] || $config['email']===$email)) { $recipients[$email]=true; }
+     $matches=!empty($config['emails'])?in_array($email,$config['emails'],true):(!$config['email'] || $config['email']===$email);
+     if ($row['bookings'] >= $config['bookings'] && count($row['workshops']) >= $config['workshops'] && $matches) { $recipients[$email]=true; }
     }
    } else {
     foreach (KWB_Commercial::orders(array('status'=>array('processing','completed','on-hold'))) as $order) {
@@ -63,7 +64,7 @@ final class KWB_Campaigns {
     $claimed=$wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}kwb_deliveries SET state='sending' WHERE id=%d AND state='pending'",$row->id));
     if (!$claimed) { continue; }
     try {
-     $message='<p>'.nl2br(esc_html($config['message'])).'</p>';
+     $message=KWB_Messages::body($config);
      if (!empty($config['image'])) {
       $url=wp_get_attachment_image_url($config['image'],'large');
       if ($url) { $message.='<p><img src="'.esc_url($url).'" alt="" style="max-width:100%;height:auto"></p>'; }

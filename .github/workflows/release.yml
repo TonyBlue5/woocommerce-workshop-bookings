@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag, e.g. v0.6.4'
+        description: 'Version tag, e.g. v1.0.0'
         required: true
         type: string
 
@@ -19,6 +19,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Validate version and syntax
         env:
           TAG: ${{ inputs.version }}
@@ -54,22 +57,16 @@ jobs:
           umask 077
           printf '%s' "$RELEASE_SIGNING_KEY" > /tmp/kwb-release-private.pem
           openssl pkey -in /tmp/kwb-release-private.pem -check -noout
-      - name: Build plugin ZIP
+      - name: Build product family ZIPs
         run: |
           set -euo pipefail
-          mkdir -p build/woocommerce-workshop-bookings/includes build/woocommerce-workshop-bookings/assets
-          cp woocommerce-workshop-bookings.php readme.txt LICENSE build/woocommerce-workshop-bookings/
-          cp includes/*.php build/woocommerce-workshop-bookings/includes/
-          cp assets/* build/woocommerce-workshop-bookings/assets/
-          cd build
-          zip -qr woocommerce-workshop-bookings.zip woocommerce-workshop-bookings
-          unzip -tq woocommerce-workshop-bookings.zip
-          sha256sum woocommerce-workshop-bookings.zip > woocommerce-workshop-bookings.zip.sha256
+          node tools/build.cjs
+          unzip -tq build/workshop-bookings-pro-for-woocommerce.zip
       - name: Sign and verify release
         run: |
           set -euo pipefail
-          openssl dgst -sha256 -sign /tmp/kwb-release-private.pem -out build/woocommerce-workshop-bookings.zip.sig build/woocommerce-workshop-bookings.zip
-          openssl dgst -sha256 -verify release-public.pem -signature build/woocommerce-workshop-bookings.zip.sig build/woocommerce-workshop-bookings.zip
+          openssl dgst -sha256 -sign /tmp/kwb-release-private.pem -out build/workshop-bookings-pro-for-woocommerce.zip.sig build/workshop-bookings-pro-for-woocommerce.zip
+          openssl dgst -sha256 -verify release-public.pem -signature build/workshop-bookings-pro-for-woocommerce.zip.sig build/workshop-bookings-pro-for-woocommerce.zip
           rm -f /tmp/kwb-release-private.pem
       - name: Create tag and GitHub release
         env:
@@ -79,4 +76,4 @@ jobs:
           set -euo pipefail
           git tag "$TAG"
           git push origin "$TAG"
-          gh release create "$TAG" build/woocommerce-workshop-bookings.zip build/woocommerce-workshop-bookings.zip.sha256 build/woocommerce-workshop-bookings.zip.sig --generate-notes --title "Workshop Bookings for WooCommerce ${TAG#v}"
+          gh release create "$TAG" build/workshop-bookings-pro-for-woocommerce.zip build/workshop-bookings-pro-for-woocommerce.zip.sha256 build/workshop-bookings-pro-for-woocommerce.zip.sig --generate-notes --title "Workshop Bookings Pro for WooCommerce ${TAG#v}"

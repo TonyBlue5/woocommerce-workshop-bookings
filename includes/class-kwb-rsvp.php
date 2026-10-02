@@ -63,12 +63,13 @@ final class KWB_RSVP {
 	}
 
 	public static function send_reminder($order_id,$item_id,$occurrence_id){
-		$order=wc_get_order($order_id);if(!$order||in_array($order->get_status(),array('cancelled','refunded','failed'),true))return;
+		$order=wc_get_order($order_id);if(!$order||!$order->is_paid())return;
 		$item=$order->get_item($item_id);if(!$item)return;
 		$occ=null;foreach(KWB_Booking::item_occurrences($item) as $o)if(hash_equals((string)$occurrence_id,(string)$o['id'])){$occ=$o;break;}if(!$occ)return;
 		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
+		if($occ['start_dt']->getTimestamp()<=time())return;
 		if(isset(KWB_Booking::blackouts($pid)[$occ['date']]))return;
-		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
+		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::staff_released($item,$occurrence_id)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
 		$subject=self::render_template(KWB_Settings::get('reminder_subject_template',KWB_I18n::t('reminder_subject_default')),$order,$item,$occ);
@@ -85,19 +86,33 @@ final class KWB_RSVP {
 
 	public static function handle_response(){
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- HMAC-authenticated response endpoint.
-		if(empty($_GET['kwb_rsvp']))return;
-		$order_id=isset($_GET['order_id'])?absint($_GET['order_id']):0;
-		$item_id=isset($_GET['item_id'])?absint($_GET['item_id']):0;
-		$occ=isset($_GET['occurrence'])?sanitize_text_field(wp_unslash($_GET['occurrence'])):'';
-		$answer=isset($_GET['answer'])?sanitize_key(wp_unslash($_GET['answer'])):'';
-		$token=isset($_GET['token'])?sanitize_text_field(wp_unslash($_GET['token'])):'';
+		$request='POST'===($_SERVER['REQUEST_METHOD']??'GET')?$_POST:$_GET;
+		if(empty($request['kwb_rsvp']))return;
+		foreach(array('order_id','item_id','occurrence','answer','token') as $field){if(!isset($request[$field])||!is_scalar($request[$field])){status_header(403);exit;}}
+		$order_id=absint($request['order_id']);
+		$item_id=absint($request['item_id']);
+		$occ=sanitize_text_field(wp_unslash($request['occurrence']));
+		$answer=sanitize_key(wp_unslash($request['answer']));
+		$token=sanitize_text_field(wp_unslash($request['token']));
 		if(!$order_id||!$item_id||!in_array($answer,array('yes','no'),true)||!hash_equals(self::token($order_id,$item_id,$occ,$answer),$token)){status_header(403);exit;}
 		$order=wc_get_order($order_id);$item=$order?$order->get_item($item_id):false;if(!$item){status_header(404);exit;}
 		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
 		if(!KWB_Booking::rsvp_enabled($pid)){status_header(403);exit;}
 		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
-		if(!$order->is_paid()||isset(KWB_Booking::blackouts($pid)[$selected['date']])){status_header(409);exit;}
+		if(KWB_Booking::staff_released($item,$occ)||!$order->is_paid()||isset(KWB_Booking::blackouts($pid)[$selected['date']])){status_header(409);exit;}
 		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo esc_html(KWB_I18n::t('rsvp_cutoff_passed'));exit;}
+		if($selected['start_dt']->getTimestamp()<=time()){status_header(409);exit;}
+		// Email security scanners may open links: only an explicit signed POST changes attendance.
+		if('POST'!==($_SERVER['REQUEST_METHOD']??'GET')){
+			nocache_headers();header('Content-Type: text/html; charset=UTF-8');header('Referrer-Policy: no-referrer');
+			echo '<!doctype html><html><meta charset="utf-8"><title>Workshop Bookings</title><body><h1>'.esc_html(KWB_Dashboard::t('Confirm attendance response','Επιβεβαίωση απάντησης παρουσίας')).'</h1><form method="post" action="'.esc_url(home_url('/')).'">';
+			foreach(array('kwb_rsvp'=>1,'order_id'=>$order_id,'item_id'=>$item_id,'occurrence'=>$occ,'answer'=>$answer,'token'=>$token) as $name=>$value){echo '<input type="hidden" name="'.esc_attr($name).'" value="'.esc_attr($value).'">';}
+			wp_nonce_field('kwb_rsvp_confirm');echo '<button type="submit">'.esc_html('yes'===$answer?KWB_I18n::t('yes_default'):KWB_I18n::t('no_default')).'</button></form></body></html>';exit;
+		}
+		if(!isset($_POST['_wpnonce'])||!is_string($_POST['_wpnonce'])||!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'])),'kwb_rsvp_confirm')){status_header(403);exit;}
+		if(!KWB_Booking::lock_capacity()){status_header(409);exit;}
+		$item=new WC_Order_Item_Product($item_id);
+		if(KWB_Booking::staff_released($item,$occ)){status_header(409);exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$was_declined=in_array((string)$occ,array_map('strval',$no),true);
 		if('yes'===$answer&&$was_declined&&KWB_Settings::get('release_on_no',1)){

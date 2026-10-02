@@ -50,6 +50,7 @@ final class KWB_Settings {
 	}
 
 	public static function register(){
+		add_filter('option_page_capability_kwb_settings_group',static function(){return 'manage_woocommerce';});
 		register_setting('kwb_settings_group',self::OPTION,array(__CLASS__,'sanitize'));
 	}
 

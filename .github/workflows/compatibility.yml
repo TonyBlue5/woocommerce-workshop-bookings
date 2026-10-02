@@ -89,6 +89,7 @@ jobs:
             wp option update woocommerce_custom_orders_table_enabled no --path=/tmp/kwb-test
           fi
           wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/kwb-test | grep commercial-smoke-ok
+          wp eval-file "$GITHUB_WORKSPACE/tests/staff-calendar.php" --path=/tmp/kwb-test | grep staff-calendar-ok
       - name: Save rendered dashboard previews
         if: matrix.php == '8.2' && matrix.storage == 'legacy'
         uses: actions/upload-artifact@v4

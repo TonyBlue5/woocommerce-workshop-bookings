@@ -1,16 +1,24 @@
-=== Workshop Bookings for WooCommerce by e-iT ===
+=== Workshop Bookings Pro for WooCommerce by e-iT ===
 Contributors: TonyBlue5
 Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 0.7.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Lightweight workshop booking slots for WooCommerce products with capacity control and Google Calendar / iCalendar links.
 
 == Description ==
+
+Staff calendar: shared online/phone availability, participants, telephone reservations and individual occurrence release/restore for Administrators and Shop Managers.
+
+Powered by e-iT – Information Technology & e-commerce.
+
+Pro adds analytics, CRM-lite, lapsed customers, loyalty coupons, referrals including qualifying guest checkout, cancellation broadcasts, RSVP reminders, My Account workshops, revenue CSV exports and a reusable native WordPress message designer.
+
+See the included HTML documentation for installation and migration instructions. Deactivate the legacy or Lite edition before activating Pro. Existing booking metadata is preserved. Monthly participation is prepaid selected months, not automatic recurring billing. Pro includes signed publisher update verification; checkout/licensing provider integration is configured separately before commercial launch.
 
 Workshop Bookings for WooCommerce keeps WooCommerce as the checkout and payment layer and adds workshop booking functionality to products.
 
@@ -41,6 +49,12 @@ Current features:
 7. Configure reminders and calendar options under WooCommerce > Workshop Bookings.
 
 == Changelog ==
+
+= 1.0.0 =
+* Separate Lite and Pro packages with preserved booking data.
+* Signed guest referral attribution saved on checkout orders; email-based deduplication and self-referral protection.
+* Reusable native WordPress message templates and revenue exports.
+* Complete Pro plugin-details sections and marketplace documentation.
 
 = 0.3.0 =
 * Added monthly recurring workshop bookings.
