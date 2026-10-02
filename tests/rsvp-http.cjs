@@ -2,6 +2,7 @@ const fs=require('fs');
 const f=JSON.parse(fs.readFileSync('/tmp/kwb-rsvp.json','utf8'));
 (async()=>{
 const r=await fetch(f.url);const html=await r.text();
+if(process.argv[2]==='staff-release'){if(r.status!==409)throw Error('RSVP accepted staff-released session');console.log('staff-rsvp-protection-ok');return;}
 if(r.status!==200||!html.includes('kwb_rsvp_confirm')&&!html.includes('_wpnonce'))throw Error('Attendance confirmation page missing');
 if(process.argv[2]==='get')return;
 const form=new URLSearchParams();for(const m of html.matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"/g))form.set(m[1],m[2].replaceAll('&amp;','&'));

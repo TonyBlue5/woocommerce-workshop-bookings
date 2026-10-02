@@ -12,5 +12,11 @@ if(getenv('KWB_TEST_MODE')==='prepare'){
  update_option('kwb_http_fixture',$fixture,false);file_put_contents('/tmp/kwb-rsvp.json',wp_json_encode($fixture));return;
 }
 $f=get_option('kwb_http_fixture');$item=wc_get_order($f['order'])->get_item($f['item']);$declined=KWB_Booking::occurrence_declined($item,$f['occ']);
+if(getenv('KWB_TEST_MODE')==='staff-release'){
+ $item->update_meta_data('_kwb_staff_released_occurrences',array($f['occ']));$item->save();
+ $f['url']=KWB_RSVP::url($f['order'],$f['item'],$f['occ'],'yes');file_put_contents('/tmp/kwb-rsvp.json',wp_json_encode($f));
+ $sent=0;add_filter('pre_wp_mail',static function($value)use(&$sent){$sent++;return true;});KWB_RSVP::send_reminder($f['order'],$f['item'],$f['occ']);
+ if($sent){throw new RuntimeException('Staff released session still sends reminders');}return;
+}
 if((getenv('KWB_TEST_MODE')==='after-post')!==$declined){throw new RuntimeException('Attendance changed without confirmation or failed to save');}
 echo "rsvp-http-ok\n";

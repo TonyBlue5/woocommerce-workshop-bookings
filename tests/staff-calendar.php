@@ -16,6 +16,10 @@ $oid=kwbs_create($input);$order=wc_get_order($oid);$items=$order->get_items();$i
 kwbs_assert($order->has_status('on-hold')&&!$order->is_paid(),'Phone order incorrectly recorded payment');
 kwbs_assert((float)$order->get_total()===120.0,'Phone monthly price changed');
 kwbs_assert(count(KWB_Booking::item_occurrences($item))===count($sessions),'Monthly phone booking lost occurrences');
+// Collecting payment for an already-held monthly order remains possible after a session started.
+$past=array('id'=>'past-staff-session','date'=>'2020-01-01','start'=>'12:00','end'=>'13:00','capacity'=>2);
+$snapshot=$item->get_meta('_kwb_occurrences',true);$history=json_decode($snapshot,true);$history[]=$past;$item->update_meta_data('_kwb_occurrences',wp_json_encode($history));$item->save();
+KWB_Booking::reserve_payment($oid);KWB_Booking::unlock_capacity();$item->update_meta_data('_kwb_occurrences',$snapshot);$item->save();
 kwbs_assert(kwbs_create($input)===$oid&&KWB_Booking::booked($pid,$occ)===1,'Duplicate submission created another booking');
 $settings=KWB_Settings::all();$settings['release_on_no']=0;update_option('kwb_settings',$settings);
 kwbs_attend($oid,$iid,$pid,$occ,'release');

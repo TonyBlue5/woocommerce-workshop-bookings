@@ -120,6 +120,8 @@ jobs:
             KWB_TEST_MODE=after-get wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family | grep rsvp-http-ok
             node tests/rsvp-http.cjs post
             KWB_TEST_MODE=after-post wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family | grep rsvp-http-ok
+            KWB_TEST_MODE=staff-release wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family
+            node tests/rsvp-http.cjs staff-release
           fi
       - uses: actions/upload-artifact@v4
         if: matrix.edition == 'pro' && matrix.storage == 'hpos' && matrix.php == '8.4'

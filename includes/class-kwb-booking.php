@@ -341,6 +341,8 @@ final class KWB_Booking {
  }
  public static function reserve_payment($id){
   $order=wc_get_order($id);if(!$order||$order->is_paid())return;
+  // These orders already occupy their places, including sessions that have since started.
+  if($order->has_status('on-hold')||($order->has_status('pending')&&$order->get_meta('_kwb_capacity_hold')))return;
   try{self::reserve_order($order);$order->save();}
   catch(Exception $error){$order->add_order_note('Workshop capacity could not be confirmed. Check payment and availability before fulfilling or refunding this order.');throw $error;}
  }
