@@ -12,11 +12,11 @@ for(const edition of ['lite','pro']){
  const files={};let main=read('woocommerce-workshop-bookings.php');
  if(edition==='lite'){
   main=main.replace('Workshop Bookings Pro for WooCommerce by e-iT','Workshop Bookings Lite for WooCommerce').replace("define('KWB_EDITION','pro')","define('KWB_EDITION','lite')").replace(/^ \* Update URI:.*\n/m,'').replace('workshop-bookings-pro-for-woocommerce',slug);
-  main=main.replace(/^require_once.*class-kwb-(updater|commercial|rewards|campaigns|dashboard|messages)\.php.*\n/gm,'').replace(/^KWB_GitHub_Updater::init\(\);\n/m,'').replace(/^\s*KWB_(Commercial|Messages)::init\(\);\n/gm,'');
+  main=main.replace(/^require_once.*class-kwb-(updater|commercial|rewards|campaigns|dashboard|messages|admin-calendar)\.php.*\n/gm,'').replace(/^KWB_GitHub_Updater::init\(\);\n/m,'').replace(/^\s*KWB_(Commercial|Messages|Admin_Calendar)::init\(\);\n/gm,'');
  }
  files[slug+'/'+slug+'.php']=main;
  const common=['i18n','settings','booking','rsvp'];
- for(const name of edition==='lite'?common:[...common,'updater','commercial','rewards','campaigns','dashboard','messages']){
+ for(const name of edition==='lite'?common:[...common,'updater','commercial','rewards','campaigns','dashboard','messages','admin-calendar']){
   let content=read('includes/class-kwb-'+name+'.php');
   if(edition==='lite'){
    if(name==='rsvp') content=read('editions/lite-reminders.php');
@@ -32,7 +32,7 @@ for(const edition of ['lite','pro']){
  }
  for(const name of fs.readdirSync(path.join(root,'assets'))){if(edition==='lite'&&name.startsWith('kwb-dashboard'))continue;files[slug+'/assets/'+name]=read('assets/'+name);}
  files[slug+'/readme.txt']=read(edition==='lite'?'editions/lite-readme.txt':'readme.txt');files[slug+'/LICENSE']=read('LICENSE');
- if(edition==='lite'&&Object.values(files).some(v=>/KWB_GitHub_Updater|api\.github\.com|class KWB_Rewards|class KWB_Commercial|class KWB_Messages/.test(v.toString())))throw Error('Commercial code leaked into Lite');
+ if(edition==='lite'&&Object.values(files).some(v=>/KWB_GitHub_Updater|api\.github\.com|class KWB_Rewards|class KWB_Commercial|class KWB_Messages|class KWB_Admin_Calendar/.test(v.toString())))throw Error('Commercial code leaked into Lite');
  const data=zip(files);fs.writeFileSync(path.join(out,slug+'.zip'),data);packages[slug+'.zip']=data;
  fs.writeFileSync(path.join(out,slug+'.zip.sha256'),crypto.createHash('sha256').update(data).digest('hex')+'  '+slug+'.zip\n');
  // Clean staging is unnecessary: write only manifest-owned source files, and ZIP from the in-memory manifest.

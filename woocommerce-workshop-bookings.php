@@ -60,6 +60,7 @@ require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rewards.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-campaigns.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-dashboard.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-messages.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-admin-calendar.php';
 
 KWB_GitHub_Updater::init();
 
@@ -86,5 +87,6 @@ add_action(
 		KWB_RSVP::init();
 		KWB_Commercial::init();
 		KWB_Messages::init();
+		KWB_Admin_Calendar::init();
 	}
 );

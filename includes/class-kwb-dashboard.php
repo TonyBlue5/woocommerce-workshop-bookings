@@ -20,12 +20,12 @@ final class KWB_Dashboard {
   }
  }
  public static function assets($hook='') {
-  if (is_admin() ? $hook!=='woocommerce_page_kwb-dashboard' : !is_account_page()) { return; }
+  if (is_admin() ? !in_array($hook,array('woocommerce_page_kwb-dashboard','woocommerce_page_kwb-calendar'),true) : !is_account_page()) { return; }
   wp_enqueue_style('kwb-dashboard',plugins_url('../assets/kwb-dashboard.css',__FILE__),array(),KWB_VERSION);
   if (is_admin()) {
    wp_enqueue_media();
    wp_enqueue_script('wc-enhanced-select');wp_enqueue_style('woocommerce_admin_styles');wp_enqueue_script('jquery-ui-datepicker');
-   wp_enqueue_script('kwb-dashboard',plugins_url('../assets/kwb-dashboard.js',__FILE__),array('jquery'),KWB_VERSION,true);
+   wp_enqueue_script('kwb-dashboard',plugins_url('../assets/kwb-dashboard.js',__FILE__),array('jquery','jquery-ui-datepicker','wc-enhanced-select'),KWB_VERSION,true);
   }
  }
  public static function menu() {
@@ -285,6 +285,7 @@ final class KWB_Dashboard {
      $cancelled=isset(KWB_Booking::blackouts($item->get_product_id())[$occ['date']]);
      echo '<li>'.esc_html($occ['date'].' · '.$occ['start'].'–'.$occ['end']).' ';
      if ($cancelled) { echo '<strong>'.esc_html(self::t('Cancelled','Ακυρώθηκε')).'</strong>'; }
+     elseif (KWB_Booking::staff_released($item,$occ['id'])) { echo esc_html(self::t('Released by staff','Αποδεσμεύτηκε από το προσωπικό')); }
      elseif (KWB_Booking::occurrence_declined($item,$occ['id'])) {
       echo esc_html(self::t('Not attending','Δεν θα παρευρεθώ'));
       if ($order->is_paid() && $occ['start_dt']->getTimestamp()>time() && KWB_Booking::rsvp_enabled($item->get_product_id())) {

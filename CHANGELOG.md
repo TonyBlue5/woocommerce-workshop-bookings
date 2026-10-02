@@ -11,6 +11,8 @@
 
 # Changelog
 
+- Pro staff calendar: phone reservations, shared capacity, per-occurrence release/restore, audit notes and duplicate submission protection.
+
 ## 0.7.0
 - Added a bilingual WooCommerce workshop dashboard restricted to Administrator and Shop Manager roles with the WooCommerce management capability.
 - Added per-workshop monthly/single booking counts and net line revenue, date filters, refund handling and separate currencies.

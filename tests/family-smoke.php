@@ -4,7 +4,7 @@ function kwbf_assert($ok,$message) { if(!$ok) { throw new RuntimeException($mess
 add_filter('pre_wp_mail',static function(){return true;});
 kwbf_assert(defined('KWB_EDITION'),'edition missing');
 if ('lite'===KWB_EDITION) {
- kwbf_assert(!class_exists('KWB_GitHub_Updater')&&!class_exists('KWB_Rewards')&&!class_exists('KWB_Commercial')&&!class_exists('KWB_Messages'),'Lite loads commercial code');
+ kwbf_assert(!class_exists('KWB_GitHub_Updater')&&!class_exists('KWB_Rewards')&&!class_exists('KWB_Commercial')&&!class_exists('KWB_Messages')&&!class_exists('KWB_Admin_Calendar'),'Lite loads commercial code');
  kwbf_assert(!has_action('template_redirect',array('KWB_RSVP','handle_response')),'Lite registers RSVP');
  echo "family-smoke-ok\n";return;
 }

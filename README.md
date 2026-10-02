@@ -42,3 +42,7 @@ GPL-2.0-or-later.
 ## Pending capacity
 
 New checkout requests reserve their places while payment is pending. Cancel abandoned pending orders to release these holds; use WooCommerce cleanup where applicable. Checkout and attendance changes share a database lock, and late payments recheck capacity before confirming a booking. If a gateway has already collected money and the place was reallocated after cancellation, review the order note and refund or reschedule manually. Administrator-created orders and manual status overrides require the merchant to check capacity.
+
+## Staff calendar (Pro)
+
+WooCommerce → Workshop calendar shows shared availability and participants. Administrators and Shop Managers can create phone bookings for simple workshop products and release or restore individual occurrences. Phone orders start On hold; payment and refunds remain WooCommerce actions. Cancelling an order releases its reserved occurrences.

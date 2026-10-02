@@ -69,7 +69,7 @@ final class KWB_RSVP {
 		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
 		if($occ['start_dt']->getTimestamp()<=time())return;
 		if(isset(KWB_Booking::blackouts($pid)[$occ['date']]))return;
-		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
+		if(!KWB_Settings::get('reminder_enabled',1)||!KWB_Booking::rsvp_enabled($pid)||KWB_Booking::staff_released($item,$occurrence_id)||KWB_Booking::occurrence_declined($item,$occurrence_id))return;
 		$to=$order->get_billing_email();if(!KWB_Settings::get('email_reminder_enabled',1)||!is_email($to))return;
 		$yes=self::url($order_id,$item_id,$occurrence_id,'yes');$no=self::url($order_id,$item_id,$occurrence_id,'no');
 		$subject=self::render_template(KWB_Settings::get('reminder_subject_template',KWB_I18n::t('reminder_subject_default')),$order,$item,$occ);
@@ -99,7 +99,7 @@ final class KWB_RSVP {
 		$pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
 		if(!KWB_Booking::rsvp_enabled($pid)){status_header(403);exit;}
 		$valid=false;$selected=null;foreach(KWB_Booking::item_occurrences($item)as$o)if(hash_equals((string)$o['id'],(string)$occ)){$valid=true;$selected=$o;break;}if(!$valid){status_header(404);exit;}
-		if(!$order->is_paid()||isset(KWB_Booking::blackouts($pid)[$selected['date']])){status_header(409);exit;}
+		if(KWB_Booking::staff_released($item,$occ)||!$order->is_paid()||isset(KWB_Booking::blackouts($pid)[$selected['date']])){status_header(409);exit;}
 		$cut=max(0,absint(KWB_Settings::get('rsvp_cutoff_minutes',30)));if($cut&&$selected['start_dt']->getTimestamp()-time()<($cut*MINUTE_IN_SECONDS)){status_header(409);echo esc_html(KWB_I18n::t('rsvp_cutoff_passed'));exit;}
 		if($selected['start_dt']->getTimestamp()<=time()){status_header(409);exit;}
 		// Email security scanners may open links: only an explicit signed POST changes attendance.
@@ -112,6 +112,7 @@ final class KWB_RSVP {
 		if(!isset($_POST['_wpnonce'])||!is_string($_POST['_wpnonce'])||!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'])),'kwb_rsvp_confirm')){status_header(403);exit;}
 		if(!KWB_Booking::lock_capacity()){status_header(409);exit;}
 		$item=new WC_Order_Item_Product($item_id);
+		if(KWB_Booking::staff_released($item,$occ)){status_header(409);exit;}
 		$yes=(array)$item->get_meta('_kwb_confirmed_occurrences',true);$no=(array)$item->get_meta('_kwb_declined_occurrences',true);
 		$was_declined=in_array((string)$occ,array_map('strval',$no),true);
 		if('yes'===$answer&&$was_declined&&KWB_Settings::get('release_on_no',1)){

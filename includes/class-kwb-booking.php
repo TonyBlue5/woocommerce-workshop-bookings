@@ -327,6 +327,7 @@ final class KWB_Booking {
 
 	public static function remaining($id,$o){return max(0,absint($o['capacity'])-self::booked($id,$o['id']));}
 	public static function occurrence_declined($item,$oid){$d=(array)$item->get_meta('_kwb_declined_occurrences',true);return in_array((string)$oid,array_map('strval',$d),true);}
+ public static function staff_released($item,$oid){$released=$item->get_meta('_kwb_staff_released_occurrences',true);return is_array($released)&&in_array((string)$oid,array_map('strval',$released),true);}
  /** Serialize seat-changing checkout and RSVP requests until the order/item is saved. */
  public static function lock_capacity(){
   if(self::$capacity_locked)return true;
@@ -349,9 +350,10 @@ final class KWB_Booking {
   foreach($order->get_items() as $item){
    $pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
    foreach(self::item_occurrences($item) as $occ){
+    if(self::staff_released($item,$occ['id'])||(KWB_Settings::get('release_on_no',1)&&self::occurrence_declined($item,$occ['id'])))continue;
     $key=$pid.'|'.$occ['id'];
     if(!isset($needed[$key]))$needed[$key]=array('pid'=>$pid,'occ'=>$occ,'qty'=>0);
-    $needed[$key]['qty']+=max(0,(int)$item->get_quantity());
+    $needed[$key]['qty']+=max(0,(int)$item->get_quantity()-absint($order->get_qty_refunded_for_item($item->get_id())));
    }
   }
   if(!$needed)return;
@@ -373,7 +375,7 @@ final class KWB_Booking {
     if($order->has_status(array('pending','checkout-draft'))&&!$order->get_meta('_kwb_capacity_hold'))continue;
     foreach($order->get_items('line_item') as $item){
      $pid=$item->get_variation_id()?wp_get_post_parent_id($item->get_variation_id()):$item->get_product_id();
-     if((int)$pid!==(int)$id||(KWB_Settings::get('release_on_no',1)&&self::occurrence_declined($item,$oid)))continue;
+     if((int)$pid!==(int)$id||self::staff_released($item,$oid)||(KWB_Settings::get('release_on_no',1)&&self::occurrence_declined($item,$oid)))continue;
      $list=json_decode((string)$item->get_meta('_kwb_occurrences',true),true);if(!is_array($list))continue;
      foreach($list as $occ)if(isset($occ['id'])&&hash_equals((string)$oid,(string)$occ['id'])){$n+=max(0,absint($item->get_quantity())-absint($order->get_qty_refunded_for_item($item->get_id())));break;}
     }

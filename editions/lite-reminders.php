@@ -22,7 +22,7 @@ final class KWB_RSVP {
   $order=wc_get_order($id);if(!$order || !$order->is_paid() || !KWB_Settings::get('reminder_enabled',1) || !KWB_Settings::get('email_reminder_enabled',1)) { return; }
   $item=$order->get_item($item_id);if(!$item || !is_email($order->get_billing_email())) { return; }
   foreach(KWB_Booking::item_occurrences($item) as $occ) {
-   if($occ['id']!==$occurrence || $occ['start_dt']->getTimestamp()<=time() || isset(KWB_Booking::blackouts($item->get_product_id())[$occ['date']]) || KWB_Booking::occurrence_declined($item,$occurrence)) { continue; }
+   if($occ['id']!==$occurrence || $occ['start_dt']->getTimestamp()<=time() || isset(KWB_Booking::blackouts($item->get_product_id())[$occ['date']]) || KWB_Booking::staff_released($item,$occurrence) || KWB_Booking::occurrence_declined($item,$occurrence)) { continue; }
    $values=array('{{workshop}}'=>$item->get_name(),'{{date}}'=>wp_date('d/m/Y',$occ['start_dt']->getTimestamp()),'{{time}}'=>$occ['start'],'{{order_number}}'=>$order->get_order_number());
    wp_mail($order->get_billing_email(),strtr(KWB_I18n::t('reminder_subject_default'),$values),strtr(KWB_I18n::t('reminder_message_default'),$values));
   }

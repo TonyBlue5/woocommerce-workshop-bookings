@@ -12,6 +12,8 @@ Lightweight workshop booking slots for WooCommerce products with capacity contro
 
 == Description ==
 
+Staff calendar: shared online/phone availability, participants, telephone reservations and individual occurrence release/restore for Administrators and Shop Managers.
+
 Powered by e-iT – Information Technology & e-commerce.
 
 Pro adds analytics, CRM-lite, lapsed customers, loyalty coupons, referrals including qualifying guest checkout, cancellation broadcasts, RSVP reminders, My Account workshops, revenue CSV exports and a reusable native WordPress message designer.

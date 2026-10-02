@@ -88,6 +88,7 @@ jobs:
             for pid in $pids; do wait "$pid"; done
             KWB_TEST_MODE=assert wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-referrals.php" --path=/tmp/family | grep concurrent-referrals-ok
           fi
+          if [ "$EDITION" = pro ]; then wp eval-file "$GITHUB_WORKSPACE/tests/staff-calendar.php" --path=/tmp/family | grep staff-calendar-ok; fi
           wp core version --path=/tmp/family
           wp plugin get woocommerce --field=version --path=/tmp/family
           KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-capacity.php" --path=/tmp/family
