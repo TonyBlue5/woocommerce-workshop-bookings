@@ -34,6 +34,10 @@ jobs:
           php -l includes/class-kwb-rsvp.php
           php -l includes/class-kwb-settings.php
           php -l includes/class-kwb-i18n.php
+          php -l includes/class-kwb-commercial.php
+          php -l includes/class-kwb-rewards.php
+          php -l includes/class-kwb-campaigns.php
+          php -l includes/class-kwb-dashboard.php
       - name: Security preflight
         run: |
           set -euo pipefail

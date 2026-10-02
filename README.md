@@ -13,6 +13,40 @@ A lightweight WooCommerce extension for selling workshop seats as normal WooComm
 - Google Calendar links in customer emails
 - Apple Calendar / iCalendar `.ics` downloads
 - HPOS-compatible WooCommerce order access
+- Admin/Shop Manager workshop analytics, loyalty campaigns, inactive-customer exports and cancellation notices
+- Configurable referral rewards and customer My Account bookings/coupons/referral links
+
+## Commercial dashboard (0.7.0)
+
+Open **WooCommerce → Workshop dashboard**. Only users with the Administrator or Shop Manager role **and** `manage_woocommerce` can use its screens and POST actions. The interface follows the current WordPress locale (English fallback, Greek for `el*`). All changes and CSV exports require a nonce.
+
+### Analytics and customers
+
+The selected period uses order creation dates in the store timezone. Monthly and single counts represent order lines, not individual seats or sessions. Revenue uses line totals after coupons, excludes tax/shipping, subtracts item refunds, and is zero for fully refunded orders. Processing, completed and refunded orders are included; pending, failed, cancelled and on-hold orders do not contribute. Different currencies remain separate. Refunds without line allocation only affect the report when the order is fully refunded; allocate partial refunds to lines for workshop attribution.
+
+Inactive customers are grouped by normalized billing email and their latest paid workshop order. Choose the inactivity threshold, inspect the first 100 and export all matches. The CSV records marketing consent as **not recorded**; purchases do not automatically subscribe customers to newsletters. Reports read bounded order pages through WooCommerce CRUD, including historical bookings, and do not rewrite them. Reports aggregate synchronously; large stores should benchmark the full-history customer report before using it regularly.
+
+### Loyalty and cancellation messages
+
+Loyalty campaigns can target one previous customer's email or all customers meeting minimum paid booking-line and distinct-workshop counts. Review the message and coupon terms before confirming. Each recipient gets a separate email and an email-restricted, single-use coupon. All coupons apply to one participant in one booking line and cannot combine with other coupons.
+
+Cancellation notices target a workshop product ID and a date, including every session that day. Confirming adds that date to the existing blackout list, prevents checkout of affected cart bookings and suppresses reminders/RSVP for cancelled sessions. Existing orders, payment records and stored occurrences remain intact. Refunds are handled separately through WooCommerce. Customers see the cancelled date in My Account. Events already saved in external calendars are not automatically removed.
+
+Messages run through Action Scheduler (WP-Cron fallback), with 25 recipients per send batch, deduplication and delivery history. Configure a working mail transport and runner. “Sent” means the mail service accepted the message, not confirmed inbox delivery. Retry only failed messages. A request interrupted while sending stays unconfirmed to avoid automatic duplicate email; reconcile it with the mail provider's logs. Do not delete campaign options or delivery rows while a campaign is running.
+
+### Referral terms
+
+Enable referrals and configure the number of friends, discount percentage (100 = free), maximum months, purchase mode, optional workshop ID and coupon lifetime. The same mode/product restrictions apply to qualifying purchases and redemption. Each group of qualifying friends earns one coupon. For example: two new friends completing monthly purchases can earn 100% off up to one month for one participant. With a two-month booking, only one month's share of that line is discounted. Unused month allowances do not carry forward to another order.
+
+An anonymous visitor opens a customer's unique link, then registers within 30 days using the signed first-touch cookie. Existing accounts and guest checkout do not qualify. A distinct registered friend and normalized billing email count at most once. The friend must complete a paid eligible booking; unpaid, failed and refunded qualifying items do not count. Self-referrals by account or email are rejected. This is not identity verification: stores should investigate abuse involving multiple identities.
+
+Terms are snapshotted when the friend registers. Changing settings applies to future registrations. Eligibility is checked again when a reward is used, including partial item refunds. A refund cannot reverse an already redeemed discount; it prevents unearned future use. Unique referral rows and a database lock prevent repeated completion events from issuing duplicate rewards. Keep WordPress salts stable; coupon IDs and signed referral cookies depend on them.
+
+### Customer dashboard and compatibility
+
+Customers use **My Account → My workshops** for their own bookings, attendance links, order/calendar details, earned coupons and referral progress. Coupon activation applies the selected coupon to the current cart. Order and coupon lists are paginated. Account data is scoped to the logged-in user; billing-email matching alone never reveals another account's orders.
+
+The update creates only two additive plugin tables (`kwb_referrals`, `kwb_deliveries`) and a My Account endpoint. It does not migrate or delete bookings. Orders use WooCommerce APIs for both legacy and HPOS storage. The signed RSA/SHA-256 updater and release keys are unchanged. Run the signed release workflow only after the PR and required CI checks pass.
 
 ## Slot format (v0.1)
 
