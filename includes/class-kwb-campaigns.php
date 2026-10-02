@@ -31,7 +31,8 @@ final class KWB_Campaigns {
    $recipients=array();
    if ('loyalty'===$config['kind']) {
     foreach (KWB_Commercial::customers() as $email=>$row) {
-     if ($row['bookings'] >= $config['bookings'] && count($row['workshops']) >= $config['workshops'] && (!$config['email'] || $config['email']===$email)) { $recipients[$email]=true; }
+     $matches=!empty($config['emails'])?in_array($email,$config['emails'],true):(!$config['email'] || $config['email']===$email);
+     if ($row['bookings'] >= $config['bookings'] && count($row['workshops']) >= $config['workshops'] && $matches) { $recipients[$email]=true; }
     }
    } else {
     foreach (KWB_Commercial::orders(array('status'=>array('processing','completed','on-hold'))) as $order) {

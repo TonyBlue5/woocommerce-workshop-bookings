@@ -40,6 +40,8 @@ $friend=wp_insert_user(array('user_login'=>'family-guest-account','user_pass'=>w
 add_user_meta($friend,'_kwb_referrer',array('id'=>$owner,'policy'=>$policy));
 $registered=kwbf_order($pid,'guest-a@example.org',$friend);$registered->update_status('completed');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'guest to registered conversion counted twice');
+$alternate=kwbf_order($pid,'alternate-billing@example.org',$friend);$alternate->update_status('completed');
+kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'account converted from guest bypassed deduplication using alternate billing email');
 $self=kwbf_order($pid,'family-owner@example.org');$self->update_status('completed');
 kwbf_assert(!$self->get_meta('_kwb_referrer'),'self referral attributed');
 $_COOKIE['kwb_ref']=kwbf_cookie($owner).'tampered';
@@ -61,9 +63,26 @@ kwbf_assert(strpos($clean,'<h2>')!==false && strpos($clean,'<script')===false &&
 kwbf_assert(strpos(KWB_Messages::body(array('html'=>true,'message'=>'<strong>Saved</strong>')),'<strong>Saved</strong>')!==false,'designer markup lost');
 kwbf_assert(strpos(KWB_Messages::body(array('message'=>'<strong>Legacy</strong>')),'&lt;strong&gt;')!==false,'legacy plain-text message semantics changed');
 $admin=get_users(array('role'=>'administrator','number'=>1))[0];wp_set_current_user($admin->ID);
+$multi_policy=KWB_Rewards::sanitize(array('products'=>array($pid,$pid+999,$pid)));
+kwbf_assert(count($multi_policy['products'])===2&&KWB_Rewards::allows_product($multi_policy,$pid)&&!KWB_Rewards::allows_product($multi_policy,$pid+1),'multi-workshop restrictions failed');
+$one_policy=KWB_Rewards::sanitize(array('products'=>array($pid)));
+$old_policy=KWB_Rewards::sanitize(array('product'=>$pid));
+kwbf_assert(KWB_Rewards::policy_key($one_policy)===KWB_Rewards::policy_key($old_policy),'single-workshop UI changed historical policy identity');
+$campaign=KWB_Campaigns::create(array('kind'=>'loyalty','emails'=>array('guest-a@example.org','guest-b@example.org','guest-b@example.org'),'email'=>'','bookings'=>1,'workshops'=>1,'policy'=>$policy,'subject'=>'Test','message'=>'Test','image'=>0),wp_generate_uuid4());
+KWB_Campaigns::prepare($campaign);global $wpdb;
+kwbf_assert((int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}kwb_deliveries WHERE campaign=%s",$campaign))===2,'explicit multi-email audience was broadened or duplicated');
 update_option('kwb_message_templates',array('demo'=>array('name'=>'Demo','subject'=>'Saved subject','message'=>'<h2>Saved body</h2>')));
 $_GET=array('template'=>'demo');ob_start();KWB_Dashboard::message_fields();$html=ob_get_clean();
 kwbf_assert(strpos($html,'Saved subject')!==false&&strpos($html,'Saved body')!==false,'saved template not loaded into composer');
+// Mutation entry points must reject missing nonces and unauthorized roles before writing.
+$die=static function(){return static function(){throw new RuntimeException('blocked');};};add_filter('wp_die_handler',$die,999);
+$_POST=array('name'=>'Injected','subject'=>'Injected','message'=>'Injected');$_REQUEST=array();$blocked=false;
+try { KWB_Messages::save(); } catch(RuntimeException $e) { $blocked='blocked'===$e->getMessage(); }
+kwbf_assert($blocked&&count(KWB_Messages::templates())===1,'template save accepted missing nonce');
+wp_set_current_user($owner);$blocked=false;
+try { KWB_Messages::save(); } catch(RuntimeException $e) { $blocked='blocked'===$e->getMessage(); }
+kwbf_assert($blocked,'customer reached template mutation');
+remove_filter('wp_die_handler',$die,999);wp_set_current_user($admin->ID);$_POST=array();$_REQUEST=array();
 // Avoid network requests during the modal check.
 set_site_transient('kwb_github_release',array('version'=>'1.0.0','fetched_at'=>time()),MINUTE_IN_SECONDS);
 $details=KWB_GitHub_Updater::details(false,'plugin_information',(object)array('slug'=>KWB_GitHub_Updater::SLUG));

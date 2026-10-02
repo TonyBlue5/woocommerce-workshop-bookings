@@ -59,8 +59,40 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/family-smoke.php" --path=/tmp/family | grep family-smoke-ok
           wp eval-file "$GITHUB_WORKSPACE/tests/security-smoke.php" --path=/tmp/family | grep security-smoke-ok
           if [ "$EDITION" = pro ]; then wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/family | grep commercial-smoke-ok; fi
+          if [ "$EDITION" = pro ]; then
+            KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-referrals.php" --path=/tmp/family
+            pids=""
+            for i in 1 2 3 4; do
+              KWB_TEST_MODE=qualify wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-referrals.php" --path=/tmp/family &
+              pids="$pids $!"
+            done
+            for pid in $pids; do wait "$pid"; done
+            KWB_TEST_MODE=assert wp eval-file "$GITHUB_WORKSPACE/tests/concurrent-referrals.php" --path=/tmp/family | grep concurrent-referrals-ok
+          fi
           wp core version --path=/tmp/family
           wp plugin get woocommerce --field=version --path=/tmp/family
+          KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/migration-smoke.php" --path=/tmp/family
+          other=workshop-bookings-pro-for-woocommerce
+          if [ "$EDITION" = pro ]; then other=workshop-bookings-for-woocommerce; fi
+          wp plugin deactivate "$slug" --path=/tmp/family
+          wp plugin install "build/$other.zip" --activate --path=/tmp/family
+          wp eval-file "$GITHUB_WORKSPACE/tests/migration-smoke.php" --path=/tmp/family | grep migration-smoke-ok
+          wp plugin deactivate "$other" --path=/tmp/family
+          wp plugin activate "$slug" --path=/tmp/family
+          wp eval-file "$GITHUB_WORKSPACE/tests/migration-smoke.php" --path=/tmp/family | grep migration-smoke-ok
+          if [ "$EDITION" = pro ]; then
+            wp option update home http://127.0.0.1:8099 --path=/tmp/family
+            wp option update siteurl http://127.0.0.1:8099 --path=/tmp/family
+            KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family
+            php -S 127.0.0.1:8099 -t /tmp/family > /tmp/kwb-http.log 2>&1 &
+            server=$!
+            trap 'kill "$server"' EXIT
+            for i in $(seq 1 20); do if curl -s http://127.0.0.1:8099/ >/dev/null; then break; fi; sleep 1; done
+            node tests/rsvp-http.cjs get
+            KWB_TEST_MODE=after-get wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family | grep rsvp-http-ok
+            node tests/rsvp-http.cjs post
+            KWB_TEST_MODE=after-post wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family | grep rsvp-http-ok
+          fi
       - uses: actions/upload-artifact@v4
         if: matrix.edition == 'pro' && matrix.storage == 'hpos' && matrix.php == '8.4'
         with:

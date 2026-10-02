@@ -24,6 +24,7 @@ final class KWB_Dashboard {
   wp_enqueue_style('kwb-dashboard',plugins_url('../assets/kwb-dashboard.css',__FILE__),array(),KWB_VERSION);
   if (is_admin()) {
    wp_enqueue_media();
+   wp_enqueue_script('wc-enhanced-select');wp_enqueue_style('woocommerce_admin_styles');
    wp_enqueue_script('kwb-dashboard',plugins_url('../assets/kwb-dashboard.js',__FILE__),array('jquery'),KWB_VERSION,true);
   }
  }
@@ -46,7 +47,8 @@ final class KWB_Dashboard {
  public static function terms($policy) {
   $mode='any'===$policy['mode']?self::t('any workshop','οποιοδήποτε εργαστήριο'):('monthly'===$policy['mode']?self::t('monthly bookings','μηνιαίες κρατήσεις'):self::t('single bookings','μεμονωμένες κρατήσεις'));
   $months_label=1===(int)$policy['months']?self::t('month','μήνα'):self::t('months','μήνες');
-  return sprintf(self::t('%s%% off %s; up to %d %s, one participant in one booking line, one use within %d days. Workshop: %s. Unused months do not carry forward.','Έκπτωση %s%% σε %s· έως %d %s, ένας συμμετέχων σε μία γραμμή κράτησης, μία χρήση εντός %d ημερών. Εργαστήριο: %s. Οι μήνες που δεν χρησιμοποιούνται δεν μεταφέρονται.'),$policy['percent'],$mode,$policy['months'],$months_label,$policy['expiry'],$policy['product']?get_the_title($policy['product']):self::t('all','όλα'));
+  if(!empty($policy['products'])){$names=implode(', ',array_map('get_the_title',$policy['products']));}else{$names=$policy['product']?get_the_title($policy['product']):self::t('all','όλα');}
+  return sprintf(self::t('%s%% off %s; up to %d %s, one participant in one booking line, one use within %d days. Workshop: %s. Unused months do not carry forward.','Έκπτωση %s%% σε %s· έως %d %s, ένας συμμετέχων σε μία γραμμή κράτησης, μία χρήση εντός %d ημερών. Εργαστήριο: %s. Οι μήνες που δεν χρησιμοποιούνται δεν μεταφέρονται.'),$policy['percent'],$mode,$policy['months'],$months_label,$policy['expiry'],$names);
  }
  public static function policy_fields($policy,$referral=false) {
   if ($referral) {
@@ -58,7 +60,10 @@ final class KWB_Dashboard {
   echo '<label class="kwb-field"><span>'.esc_html(self::t('Eligible purchases and reward','Επιλέξιμες αγορές και ανταμοιβή')).'</span><select name="mode">';
   foreach(array('monthly'=>self::t('Monthly','Μηνιαία'),'single'=>self::t('Single','Μεμονωμένη'),'any'=>self::t('Both','Και τα δύο')) as $value=>$label) { echo '<option value="'.esc_attr($value).'" '.selected($policy['mode'],$value,false).'>'.esc_html($label).'</option>'; }
   echo '</select></label>';
-  self::input('product',self::t('Workshop product ID (0 = all)','ID προϊόντος εργαστηρίου (0 = όλα)'),$policy['product'],'number','min="0" required');
+  $ids=$policy['products']??($policy['product']?array($policy['product']):array());
+  echo '<label class="kwb-field"><span>'.esc_html(self::t('Workshops (empty = all)','Εργαστήρια (κενό = όλα)')).'</span><select class="wc-product-search" name="products[]" multiple="multiple" style="width:100%" data-action="woocommerce_json_search_products" data-placeholder="'.esc_attr(self::t('Search workshops','Αναζήτηση εργαστηρίων')).'">';
+  foreach($ids as $id){echo '<option value="'.esc_attr($id).'" selected>'.esc_html(get_the_title($id)).'</option>';}
+  echo '</select></label>';
   self::input('expiry',self::t('Coupon validity (days)','Ισχύς κουπονιού (ημέρες)'),$policy['expiry'],'number','min="1" max="365" required');
  }
  public static function render() {
@@ -88,7 +93,7 @@ final class KWB_Dashboard {
    echo '<input type="hidden" name="days" value="'.esc_attr($days).'">'; self::button(self::t('Download CSV','Λήψη CSV')); echo '</section>';
    self::form('preview',self::t('Reward your customers','Επιβράβευση πελατών'));
    echo '<input type="hidden" name="kind" value="loyalty">';
-   self::input('email',self::t('Customer email (blank = all matching customers)','Email πελάτη (κενό = όλοι οι αντίστοιχοι πελάτες)'),'','email');
+   self::input('email',self::t('Customer emails, separated by commas (blank = all matching customers)','Email πελατών, χωρισμένα με κόμμα (κενό = όλοι οι αντίστοιχοι πελάτες)'),'','text','maxlength="10000"');
    self::input('bookings',self::t('Minimum paid booking lines','Ελάχιστος αριθμός πληρωμένων κρατήσεων'),1,'number','min="1" required');
    self::input('workshops',self::t('Minimum different workshops','Ελάχιστος αριθμός διαφορετικών εργαστηρίων'),1,'number','min="1" required');
    self::policy_fields(KWB_Rewards::settings());
@@ -163,8 +168,10 @@ final class KWB_Dashboard {
    if ($config['image'] && (!wp_attachment_is_image($config['image']) || !current_user_can('edit_post',$config['image']))) { wp_die('Invalid image'); }
    if ('loyalty'===$kind) {
     $config['policy']=KWB_Rewards::sanitize(wp_unslash($_POST)); self::check_policy($config['policy']);
-    $config['email']=strtolower(sanitize_email(self::request('email')));
-    if (self::request('email') && !is_email($config['email'])) { wp_die('Invalid email'); }
+    $emails=array_values(array_unique(array_filter(array_map('trim',preg_split('/[,;\s]+/',strtolower(self::request('email')))))));
+    if(count($emails)>100){wp_die('Too many recipients');}
+    foreach($emails as $email){if(!is_email($email)){wp_die('Invalid email');}}
+    $config['emails']=$emails;$config['email']=count($emails)===1?$emails[0]:'';
     $config['bookings']=max(1,absint(self::request('bookings'))); $config['workshops']=max(1,absint(self::request('workshops')));
    } else {
     $config['product']=absint(self::request('product')); self::check_product($config['product']);
@@ -192,6 +199,9 @@ final class KWB_Dashboard {
  }
  public static function csv($value) { return KWB_Commercial::csv_cell($value); }
  private static function check_policy($policy) {
+  if(!empty($policy['products'])){
+   foreach($policy['products'] as $id){$single=$policy;unset($single['products']);$single['product']=$id;self::check_policy($single);}return;
+  }
   self::check_product($policy['product'],true);
   if (!$policy['product']) { return; }
   if ('any'!==$policy['mode'] && !KWB_Booking::mode($policy['product'],$policy['mode'])) {
@@ -211,7 +221,8 @@ final class KWB_Dashboard {
   echo '<section class="kwb-card"><h2>'.esc_html($config['subject']).'</h2>'.KWB_Messages::body($config);
   if ($config['image']) { echo wp_kses_post(wp_get_attachment_image($config['image'],'medium')); }
   if ('loyalty'===$config['kind']) {
-   echo '<p>'.esc_html(self::terms($config['policy'])).'</p><p>'.esc_html(sprintf(self::t('Audience: %s. At least %d bookings across %d workshops.','Παραλήπτες: %s. Τουλάχιστον %d κρατήσεις σε %d εργαστήρια.'),$config['email']?:self::t('all matching customers','όλοι οι αντίστοιχοι πελάτες'),$config['bookings'],$config['workshops'])).'</p>';
+   $audience=!empty($config['emails'])?implode(', ',$config['emails']):($config['email']?:self::t('all matching customers','όλοι οι αντίστοιχοι πελάτες'));
+   echo '<p>'.esc_html(self::terms($config['policy'])).'</p><p>'.esc_html(sprintf(self::t('Audience: %s. At least %d bookings across %d workshops.','Παραλήπτες: %s. Τουλάχιστον %d κρατήσεις σε %d εργαστήρια.'),$audience,$config['bookings'],$config['workshops'])).'</p>';
   } else { echo '<p>'.esc_html(get_the_title($config['product']).' · '.$config['date']).'</p>'; }
   self::form('confirm',self::t('Confirm and queue','Επιβεβαίωση και προγραμματισμός'));
   echo '<input type="hidden" name="preview" value="'.esc_attr($id).'">';

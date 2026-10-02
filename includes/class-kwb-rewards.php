@@ -18,12 +18,20 @@ final class KWB_Rewards {
   return wp_parse_args((array)get_option('kwb_referral_settings',array()),array('enabled'=>0,'friends'=>2,'percent'=>100,'months'=>1,'mode'=>'monthly','product'=>0,'expiry'=>90));
  }
  public static function sanitize($input) {
-  return array('enabled'=>empty($input['enabled'])?0:1,
+  $input=is_array($input)?$input:array();
+  $policy=array('enabled'=>empty($input['enabled'])?0:1,
    'friends'=>max(1,min(100,absint($input['friends']??2))),
    'percent'=>max(1,min(100,(float)($input['percent']??100))),
    'months'=>max(1,min(12,absint($input['months']??1))),
    'mode'=>in_array($input['mode']??'',array('monthly','single','any'),true)?$input['mode']:'monthly',
    'product'=>absint($input['product']??0), 'expiry'=>max(1,min(365,absint($input['expiry']??90))));
+  $products=array_slice(array_values(array_unique(array_filter(array_map('absint',is_array($input['products']??null)?$input['products']:array())))),0,50);
+  if(count($products)===1){$policy['product']=$products[0];}
+  elseif($products){sort($products,SORT_NUMERIC);$policy['products']=$products;$policy['product']=0;}
+  return $policy;
+ }
+ public static function allows_product($policy,$pid) {
+  return !empty($policy['products'])?in_array((int)$pid,array_map('intval',$policy['products']),true):(!$policy['product'] || (int)$pid===(int)$policy['product']);
  }
  public static function types($types) { $types['kwb_reward']=KWB_Dashboard::t('Workshop reward','Ανταμοιβή εργαστηρίου'); return $types; }
  public static function link($user_id) {
@@ -36,6 +44,7 @@ final class KWB_Rewards {
  }
  public static function capture() {
   if (is_user_logged_in() || !self::settings()['enabled'] || empty($_GET['kwb_ref']) || !empty($_COOKIE['kwb_ref'])) { return; }
+  if(!is_string($_GET['kwb_ref'])) { return; }
   $token=sanitize_text_field(wp_unslash($_GET['kwb_ref']));
   if (!preg_match('/^[a-zA-Z0-9]{32}$/',$token)) { return; }
   $users=get_users(array('meta_key'=>'_kwb_referral_token','meta_value'=>$token,'number'=>1,'fields'=>'ID'));
@@ -47,8 +56,9 @@ final class KWB_Rewards {
  }
  public static function register_friend($user_id) {
   if (!self::settings()['enabled']) { return; }
-  $parts=explode('|',sanitize_text_field(wp_unslash($_COOKIE['kwb_ref']??'')));
-  if (count($parts)!==3 || (int)$parts[1]<time() || !hash_equals(hash_hmac('sha256',$parts[0].'|'.$parts[1],wp_salt('auth')),$parts[2])) { return; }
+  $raw=$_COOKIE['kwb_ref']??'';if(!is_string($raw)){return;}
+  $parts=explode('|',wp_unslash($raw));
+  if (count($parts)!==3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || (int)$parts[1]<time() || (int)$parts[1]>time()+30*DAY_IN_SECONDS || !hash_equals(hash_hmac('sha256',$parts[0].'|'.$parts[1],wp_salt('auth')),$parts[2])) { return; }
   $referrer=get_userdata(absint($parts[0])); $friend=get_userdata($user_id);
   if (!$friend || !$referrer || $referrer->ID===$friend->ID || strtolower($friend->user_email)===strtolower($referrer->user_email)) { return; }
   add_user_meta($user_id,'_kwb_referrer',array('id'=>$referrer->ID,'policy'=>self::settings()),true);
@@ -80,7 +90,7 @@ final class KWB_Rewards {
   if (!$order || !$order->has_status('completed')) { return false; }
   foreach ($order->get_items() as $item) {
    $type=KWB_Commercial::type($item);
-   if (!$type || ('any'!==$policy['mode'] && $type!==$policy['mode']) || ($policy['product'] && (int)$item->get_product_id()!==(int)$policy['product'])) { continue; }
+   if (!$type || ('any'!==$policy['mode'] && $type!==$policy['mode']) || !self::allows_product($policy,$item->get_product_id())) { continue; }
    if (KWB_Commercial::net($order,$item)>0 && !$order->get_total_refunded_for_item($item->get_id()) && !$order->get_qty_refunded_for_item($item->get_id())) { return true; }
   }
   return false;
@@ -102,11 +112,13 @@ final class KWB_Rewards {
   if (!KWB_Commercial::lock($lock)) { throw new RuntimeException('Reward lock unavailable; retry order completion.'); }
   try {
    $hash=hash('sha256',$email);
+   $account=$friend?get_userdata($friend):false;
+   $account_hash=$account?hash('sha256',strtolower(trim($account->user_email))):$hash;
    $table=$wpdb->prefix.'kwb_referrals';
-   $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE email_hash=%s OR (friend_id=%d AND friend_id>0)",$hash,$friend));
+   $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE email_hash IN (%s,%s) OR (friend_id=%d AND friend_id>0)",$hash,$account_hash,$friend));
    if (!$existing) {
     $table=$wpdb->prefix.'kwb_guest_referrals';
-    $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_guest_referrals WHERE email_hash=%s",$hash));
+    $existing=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_guest_referrals WHERE email_hash IN (%s,%s)",$hash,$account_hash));
    }
    if (!$existing) {
     $table=$wpdb->prefix.($friend?'kwb_referrals':'kwb_guest_referrals');
@@ -172,7 +184,7 @@ final class KWB_Rewards {
   if ('kwb_reward'!==$coupon->get_discount_type()) { return $valid; }
   $policy=$coupon->get_meta('_kwb_policy'); $booking=self::booking($values);
   $pid=$product->get_parent_id()?:$product->get_id();
-  return $valid && !empty($booking['type']) && ('any'===$policy['mode'] || $booking['type']===$policy['mode']) && (!$policy['product'] || $pid===$policy['product']);
+  return $valid && !empty($booking['type']) && ('any'===$policy['mode'] || $booking['type']===$policy['mode']) && self::allows_product($policy,$pid);
  }
  public static function discount($discount,$amount,$values,$single,$coupon) {
   if ('kwb_reward'!==$coupon->get_discount_type()) { return $discount; }
