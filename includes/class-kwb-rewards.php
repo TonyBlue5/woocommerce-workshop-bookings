@@ -90,7 +90,8 @@ final class KWB_Rewards {
   $order=wc_get_order($order_id);
   if (!$order) { return; }
   $friend=$order->get_customer_id();
-  $ref=(array)$order->get_meta('_kwb_referrer');
+  $stored=$order->get_meta('_kwb_referrer');
+  $ref=is_array($stored)?$stored:array();
   if (!$ref && $friend) { $ref=(array)get_user_meta($friend,'_kwb_referrer',true); }
   $email=strtolower(trim($order->get_billing_email()));
   if (isset($ref['email']) && $ref['email']!==$email) { return; }

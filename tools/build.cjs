@@ -26,11 +26,11 @@ for(const edition of ['lite','pro']){
     content=replace(content,'$out=self::defaults();$input=is_array($input)?$input:array();','$out=self::defaults();$input=is_array($input)?$input:array();$legacy=self::all();');
     content=replace(content,'return$out;',"foreach(array('rsvp_enabled','release_on_no','rsvp_cutoff_minutes','rsvp_yes_label','rsvp_no_label','reminder_subject_template','reminder_message_template') as $key) { $out[$key]=$legacy[$key]; } return$out;");
    }
-   if(name==='booking') content=content.split('\n').filter(line=>!line.includes("woocommerce_wp_select(array('id'=>self::META_RSVP_OVERRIDE")).join('\n');
+   if(name==='booking') content=content.split('\n').filter(line=>!line.includes("woocommerce_wp_select(array('id'=>self::META_RSVP_OVERRIDE")&&!line.includes('update_post_meta($id,self::META_RSVP_OVERRIDE')).join('\n');
   }
   files[slug+'/includes/class-kwb-'+name+'.php']=content;
  }
- for(const name of fs.readdirSync(path.join(root,'assets'))){if(edition==='lite'&&name.startsWith('kwb-dashboard'))continue;files[slug+'/assets/'+name]=fs.readFileSync(path.join(root,'assets',name));}
+ for(const name of fs.readdirSync(path.join(root,'assets'))){if(edition==='lite'&&name.startsWith('kwb-dashboard'))continue;files[slug+'/assets/'+name]=read('assets/'+name);}
  files[slug+'/readme.txt']=read(edition==='lite'?'editions/lite-readme.txt':'readme.txt');files[slug+'/LICENSE']=read('LICENSE');
  if(edition==='lite'&&Object.values(files).some(v=>/KWB_GitHub_Updater|api\.github\.com|class KWB_Rewards|class KWB_Commercial|class KWB_Messages/.test(v.toString())))throw Error('Commercial code leaked into Lite');
  const data=zip(files);fs.writeFileSync(path.join(out,slug+'.zip'),data);packages[slug+'.zip']=data;
