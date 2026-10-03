@@ -9,7 +9,8 @@ final class KWB_Rewards {
   add_action('woocommerce_store_api_checkout_update_order_meta', array(__CLASS__,'attribute_order'), 20);
   add_action('woocommerce_order_status_completed', array(__CLASS__,'qualify'));
   add_action('kwb_reconcile_referrals',array(__CLASS__,'reconcile'));
-  if(get_option('kwb_referral_reconciled')!=='1.0.1' && !wp_next_scheduled('kwb_reconcile_referrals')) { wp_schedule_single_event(time()+60,'kwb_reconcile_referrals',array(1)); }
+  $page=max(1,(int)get_option('kwb_referral_reconcile_page',1));
+  if(get_option('kwb_referral_reconciled')!=='1.0.1' && !wp_next_scheduled('kwb_reconcile_referrals',array($page))) { wp_schedule_single_event(time()+60,'kwb_reconcile_referrals',array($page)); }
   add_filter('woocommerce_coupon_discount_types', array(__CLASS__,'types'));
   add_filter('woocommerce_product_coupon_types', static function($types) { $types[]='kwb_reward'; return $types; });
   add_filter('woocommerce_coupon_is_valid', array(__CLASS__,'valid'), 10, 3);
@@ -152,7 +153,7 @@ final class KWB_Rewards {
  public static function reconcile($page=1) {
   $orders=wc_get_orders(array('status'=>'completed','limit'=>50,'page'=>max(1,(int)$page),'orderby'=>'ID','order'=>'ASC','type'=>'shop_order'));
   foreach($orders as $order) { self::qualify($order->get_id()); }
-  if(count($orders)===50) { wp_schedule_single_event(time()+30,'kwb_reconcile_referrals',array((int)$page+1)); }
+  if(count($orders)===50) { update_option('kwb_referral_reconcile_page',(int)$page+1,false);wp_schedule_single_event(time()+30,'kwb_reconcile_referrals',array((int)$page+1)); }
   else { update_option('kwb_referral_reconciled','1.0.1',false); }
  }
  public static function qualified($owner,$policy) {

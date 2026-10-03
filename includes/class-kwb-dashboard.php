@@ -238,7 +238,7 @@ final class KWB_Dashboard {
   if ('loyalty'===$config['kind']) {
    $audience=!empty($config['emails'])?implode(', ',$config['emails']):($config['email']?:self::t('all matching customers','όλοι οι αντίστοιχοι πελάτες'));
    echo '<p>'.esc_html(self::terms($config['policy'])).'</p><p>'.esc_html(sprintf(self::t('Audience: %s. At least %d bookings across %d workshops.','Παραλήπτες: %s. Τουλάχιστον %d κρατήσεις σε %d εργαστήρια.'),$audience,$config['bookings'],$config['workshops'])).'</p>';
-  } else { echo '<p>'.esc_html(get_the_title($config['product']).' · '.$config['date']).'</p>'; }
+  } else { echo '<p>'.esc_html(get_the_title($config['product']).' · '.KWB_UI::date($config['date'])).'</p>'; }
   self::form('confirm',self::t('Confirm and queue','Επιβεβαίωση και προγραμματισμός'));
   echo '<input type="hidden" name="preview" value="'.esc_attr($id).'">';
   self::button(self::t('Confirm and send','Επιβεβαίωση και αποστολή'));echo '</section>';

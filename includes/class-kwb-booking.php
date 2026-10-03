@@ -45,7 +45,7 @@ final class KWB_Booking {
 	}
 
  public static function hidden_meta($keys) {
-  return array_unique(array_merge($keys,array('_kwb_booking_type','_kwb_booking_month','_kwb_booking_months','_kwb_occurrences')));
+  return array_unique(array_merge($keys,array('_kwb_booking_type','_kwb_booking_month','_kwb_booking_months','_kwb_occurrences','_kwb_confirmed_occurrences','_kwb_declined_occurrences','_kwb_staff_released_occurrences')));
  }
  public static function visible_meta($data,$item) {
   if(!$item instanceof WC_Order_Item_Product || !in_array($item->get_meta('_kwb_booking_type'),array('monthly','single'),true)) { return $data; }
@@ -254,7 +254,8 @@ final class KWB_Booking {
 	public static function month_label($month){
 		if(!preg_match('/^\d{4}-\d{2}$/',(string)$month))return(string)$month;
 		$dt=DateTimeImmutable::createFromFormat('!Y-m',(string)$month,wp_timezone());
-		return$dt?wp_date('F Y',$dt->getTimestamp(),wp_timezone()):(string)$month;
+		$names=KWB_I18n::t('months');
+		return$dt?$names[(int)$dt->format('n')-1].' '.$dt->format('Y'):(string)$month;
 	}
 
 	public static function fields(){
