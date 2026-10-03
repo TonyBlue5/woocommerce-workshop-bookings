@@ -111,7 +111,7 @@ final class KWB_Dashboard {
   echo '<p>Powered by e-iT – Information Technology &amp; e-commerce</p></div>';
  }
  public static function message_fields() {
-  $templates=KWB_Messages::templates();$key=sanitize_key(is_scalar($_GET['template']??'')?$_GET['template']:'');$entry=$templates[$key]??array();
+  $templates=KWB_Messages::templates();$key=sanitize_key(is_scalar($_GET['template']??'')?($_GET['template']??''):'');$entry=$templates[$key]??array();
   echo '<p>'.esc_html(self::t('Start from a saved template:','Έναρξη από αποθηκευμένο πρότυπο:')).' ';
   foreach($templates as $id=>$row) { echo '<a class="button" href="'.esc_url(add_query_arg('template',$id,self::url(sanitize_key($_GET['tab']??'customers')))).'">'.esc_html($row['name']).'</a> '; }
   echo '</p>';

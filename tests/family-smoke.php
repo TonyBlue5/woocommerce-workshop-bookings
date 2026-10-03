@@ -63,6 +63,8 @@ $again->update_status('cancelled');$registered->update_status('cancelled');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===1,'refunded guest remained eligible');
 $coupon=new WC_Coupon($coupons[0]->ID);wp_set_current_user($owner);
 kwbf_assert(!KWB_Rewards::valid(true,$coupon),'guest refund did not revoke unredeemed reward');
+// Restore a paid purchase for the independent two-recipient loyalty scenario below.
+$registered->update_status('completed');
 // Sanitized HTML remains rich text while removing active content.
 $clean=KWB_Messages::clean('<h2>Hello</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a><img src="https://example.org/x.png" onerror="alert(1)">');
 kwbf_assert(strpos($clean,'<h2>')!==false && strpos($clean,'<script')===false && strpos($clean,'javascript:')===false && strpos($clean,'onerror=')===false,'template HTML sanitization failed');
