@@ -23,7 +23,7 @@ final class KWB_Dashboard {
   if (is_admin() ? !in_array($hook,array('woocommerce_page_kwb-dashboard','woocommerce_page_kwb-calendar'),true) : !is_account_page()) { return; }
   wp_enqueue_style('kwb-dashboard',plugins_url('../assets/kwb-dashboard.css',__FILE__),array(),KWB_VERSION);
   if (is_admin()) {
-   wp_enqueue_media();
+   wp_enqueue_media();KWB_UI::assets();
    wp_enqueue_script('wc-enhanced-select');wp_enqueue_style('woocommerce_admin_styles');wp_enqueue_script('jquery-ui-datepicker');
    wp_enqueue_script('kwb-dashboard',plugins_url('../assets/kwb-dashboard.js',__FILE__),array('jquery','jquery-ui-datepicker','wc-enhanced-select'),KWB_VERSION,true);
   }
@@ -35,7 +35,7 @@ final class KWB_Dashboard {
  }
  public static function url($tab='analytics') { return add_query_arg(array('page'=>'kwb-dashboard','tab'=>$tab),admin_url('admin.php')); }
  public static function input($name,$label,$value='',$type='text',$extra='') {
-  if('date'===$type && KWB_I18n::is_greek()){$type='text';if(KWB_Booking::date_ok($value)){$value=substr($value,8,2).'/'.substr($value,5,2).'/'.substr($value,0,4);}$extra.=' class="kwb-local-date" placeholder="ηη/μμ/εεεε" pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}"';}
+  if(in_array($type,array('date','month'),true)) { echo '<label class="kwb-field"><span>'.esc_html($label).'</span>';KWB_UI::date_input($name,$value,$extra,'month'===$type);echo '</label>';return; }
   echo '<label class="kwb-field"><span>'.esc_html($label).'</span><input name="'.esc_attr($name).'" type="'.esc_attr($type).'" value="'.esc_attr($value).'" '.$extra.'></label>';
  }
  public static function date_value($value){if(preg_match('~^(\d{2})/(\d{2})/(\d{4})$~',$value,$parts))return $parts[3].'-'.$parts[2].'-'.$parts[1];return $value;}
@@ -63,9 +63,7 @@ final class KWB_Dashboard {
   foreach(array('monthly'=>self::t('Monthly','Μηνιαία'),'single'=>self::t('Single','Μεμονωμένη'),'any'=>self::t('Both','Και τα δύο')) as $value=>$label) { echo '<option value="'.esc_attr($value).'" '.selected($policy['mode'],$value,false).'>'.esc_html($label).'</option>'; }
   echo '</select></label>';
   $ids=$policy['products']??($policy['product']?array($policy['product']):array());
-  echo '<label class="kwb-field"><span>'.esc_html(self::t('Workshops (empty = all)','Εργαστήρια (κενό = όλα)')).'</span><select class="wc-product-search" name="products[]" multiple="multiple" style="width:100%" data-action="woocommerce_json_search_products" data-placeholder="'.esc_attr(self::t('Search workshops','Αναζήτηση εργαστηρίων')).'">';
-  foreach($ids as $id){echo '<option value="'.esc_attr($id).'" selected>'.esc_html(get_the_title($id)).'</option>';}
-  echo '</select></label>';
+  echo '<label class="kwb-field"><span>'.esc_html(self::t('Workshops (empty = all)','Εργαστήρια (κενό = όλα)')).'</span>';KWB_UI::workshop_select('products[]',$ids,true,true);echo '</label>';
   self::input('expiry',self::t('Coupon validity (days)','Ισχύς κουπονιού (ημέρες)'),$policy['expiry'],'number','min="1" max="365" required');
  }
  public static function render() {
@@ -103,7 +101,7 @@ final class KWB_Dashboard {
   } elseif ('broadcast'===$tab) {
    self::form('preview',self::t('Cancellation notice','Ενημέρωση ακύρωσης'));
    echo '<input type="hidden" name="kind" value="broadcast">';
-   self::input('product',self::t('Workshop product ID','ID προϊόντος εργαστηρίου'),'','number','min="1" required');
+   echo '<label class="kwb-field"><span>'.esc_html(self::t('Workshop','Εργαστήριο')).'</span>';KWB_UI::workshop_select('product');echo '</label>';
    self::input('date',self::t('Cancelled date (all sessions that day)','Ημερομηνία ακύρωσης (όλες οι συναντήσεις της ημέρας)'),'','date','required');
    echo '<p>'.esc_html(self::t('All booked customers for this workshop and date receive a separate email. Confirming also closes this date to new bookings and stops reminders. Existing orders and payments are preserved; manage refunds from the order screen.','Όλοι οι πελάτες με κράτηση για το εργαστήριο και την ημερομηνία λαμβάνουν ξεχωριστό email. Η επιβεβαίωση κλείνει την ημέρα για νέες κρατήσεις και σταματά τις υπενθυμίσεις. Οι παραγγελίες και οι πληρωμές διατηρούνται· οι επιστροφές γίνονται από την παραγγελία.')).'</p>';
    self::message_fields(); self::button(self::t('Review cancellation','Έλεγχος ακύρωσης'));
@@ -122,21 +120,34 @@ final class KWB_Dashboard {
   echo '<input id="kwb-image" type="hidden" name="image" value="0"><button type="button" class="button" id="kwb-select-image">'.esc_html(self::t('Choose image','Επιλογή εικόνας')).'</button><button type="button" class="button" id="kwb-remove-image">'.esc_html(self::t('Remove image','Αφαίρεση εικόνας')).'</button><div id="kwb-image-preview"></div>';
  }
  public static function analytics() {
-  $from=self::date_value(sanitize_text_field($_GET['from']??wp_date('Y-m-01'))); $to=self::date_value(sanitize_text_field($_GET['to']??wp_date('Y-m-d')));
-  if (!KWB_Booking::date_ok($from) || !KWB_Booking::date_ok($to) || $from>$to) { $from=wp_date('Y-m-01');$to=wp_date('Y-m-d'); }
-  echo '<section class="kwb-card"><h2>'.esc_html(self::t('Booking overview','Επισκόπηση κρατήσεων')).'</h2><form class="kwb-filters" method="get"><input type="hidden" name="page" value="kwb-dashboard">';
+  $from=self::date_value(sanitize_text_field(is_scalar($_GET['from']??'')?($_GET['from']??wp_date('Y-m-01')):''));$to=self::date_value(sanitize_text_field(is_scalar($_GET['to']??'')?($_GET['to']??wp_date('Y-m-d')):''));
+  if(!KWB_Booking::date_ok($from)||!KWB_Booking::date_ok($to)||$from>$to||(new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->days>365) { $from=wp_date('Y-m-01');$to=wp_date('Y-m-d'); }
+  $product=absint(is_scalar($_GET['product']??0)?($_GET['product']??0):0);
+  if($product) { self::check_product($product); }
+  echo '<section class="kwb-card"><h2>'.esc_html(self::t('Workshop performance','Απόδοση εργαστηρίων')).'</h2><form class="kwb-filters" method="get"><input type="hidden" name="page" value="kwb-dashboard">';
   self::input('from',self::t('From','Από'),$from,'date');self::input('to',self::t('To','Έως'),$to,'date');
-  echo '<button class="button">'.esc_html(self::t('Update','Ενημέρωση')).'</button></form><p>'.esc_html(self::t('By order creation date. Counts are booking lines; revenue excludes tax and shipping, after discounts and item refunds. Fully refunded orders have zero revenue. Currencies are shown separately.','Με βάση την ημερομηνία παραγγελίας. Μετράμε γραμμές κράτησης· τα έσοδα δεν περιλαμβάνουν φόρους και μεταφορικά και αφαιρούν εκπτώσεις και επιστροφές ειδών. Οι πλήρως επιστραφείσες παραγγελίες έχουν μηδενικά έσοδα. Τα νομίσματα εμφανίζονται χωριστά.')).'</p><div class="kwb-table"><table><thead><tr>';
-  foreach(array(self::t('Workshop','Εργαστήριο'),self::t('Monthly bookings','Μηνιαίες κρατήσεις'),self::t('Monthly revenue','Έσοδα μηνιαίων'),self::t('Single bookings','Μεμονωμένες κρατήσεις'),self::t('Single revenue','Έσοδα μεμονωμένων')) as $label) { echo '<th>'.esc_html($label).'</th>'; }
-  echo '</tr></thead><tbody>';
-  $rows=KWB_Commercial::report($from,$to);
-  foreach($rows as $row) {
-   echo '<tr><th>'.esc_html($row['name']).'</th><td>'.esc_html($row['monthly']).'</td><td>'.wp_kses_post(wc_price($row['monthly_revenue'],array('currency'=>$row['currency']))).'</td><td>'.esc_html($row['single']).'</td><td>'.wp_kses_post(wc_price($row['single_revenue'],array('currency'=>$row['currency']))).'</td></tr>';
+  echo '<label class="kwb-field"><span>'.esc_html(self::t('Workshop','Εργαστήριο')).'</span>';KWB_UI::workshop_select('product',array($product),false,true);echo '</label><button class="button">'.esc_html(self::t('Update','Ενημέρωση')).'</button></form>';
+  echo '<p>'.esc_html(self::t('Up to 366 days. Sales follow order creation dates; bookings are lines, participants are quantities after refunded places. Revenue is after discounts and item refunds, excluding tax and shipping. Comparison uses the immediately preceding period with the same number of days.','Έως 366 ημέρες. Οι πωλήσεις ακολουθούν τις ημερομηνίες παραγγελιών· οι κρατήσεις είναι γραμμές, οι συμμετοχές είναι ποσότητες μετά τις επιστραφείσες θέσεις. Τα έσοδα αφαιρούν εκπτώσεις και επιστροφές ειδών, χωρίς φόρους και μεταφορικά. Η σύγκριση αφορά την αμέσως προηγούμενη περίοδο με ίδιο αριθμό ημερών.')).'</p>';
+  echo '<p>'.esc_html(self::t('Occupancy uses session dates and paid places from all purchase dates. It combines saved session capacities with the current schedule for sessions without bookings, so it is an estimate when schedules changed. Cancelled or released places are excluded. Occupancy is shared across currencies; revenue ranking is within each currency. A dash means insufficient data.','Η πληρότητα αφορά ημερομηνίες συναντήσεων και πληρωμένες θέσεις από όλες τις ημερομηνίες αγοράς. Συνδυάζει αποθηκευμένες χωρητικότητες με το τρέχον πρόγραμμα για συναντήσεις χωρίς κρατήσεις, άρα αποτελεί εκτίμηση όταν άλλαξε το πρόγραμμα. Εξαιρούνται ακυρωμένες ή αποδεσμευμένες θέσεις. Η πληρότητα είναι κοινή μεταξύ νομισμάτων· η κατάταξη εσόδων γίνεται ανά νόμισμα. Η παύλα σημαίνει ανεπαρκή στοιχεία.')).'</p>';
+  $rows=KWB_Commercial::performance($from,$to,$product);$groups=array();foreach($rows as $row){$groups[$row['currency']][]=$row;}
+  foreach($groups as $currency=>$group) {
+   $top=reset($group);$low=end($group);
+   echo '<div class="kwb-stats"><span>'.esc_html($currency.' · '.self::t('Top revenue: ','Υψηλότερα έσοδα: ').$top['name']).'</span><span>'.esc_html(self::t('Lower revenue / review: ','Χαμηλότερα έσοδα / έλεγχος: ').$low['name']).'</span></div>';
   }
-  if (!$rows) { echo '<tr><td colspan="5">'.esc_html(self::t('No bookings in this period.','Δεν υπάρχουν κρατήσεις σε αυτή την περίοδο.')).'</td></tr>'; }
+  echo '<p>'.esc_html(self::t('Review promotion, timetable and staffing alongside demand and costs. Revenue and occupancy alone do not establish profitability or a cause.','Εξετάστε προώθηση, ωράριο και προσωπικό μαζί με τη ζήτηση και το κόστος. Έσοδα και πληρότητα από μόνα τους δεν τεκμηριώνουν κερδοφορία ή αιτία.')).'</p><div class="kwb-table"><table class="kwb-performance"><thead><tr>';
+  foreach(array(self::t('Workshop','Εργαστήριο'),self::t('Currency','Νόμισμα'),self::t('Bookings','Κρατήσεις'),self::t('Monthly / single','Μηνιαίες / μεμονωμένες'),self::t('Participants','Συμμετοχές'),self::t('Net revenue','Καθαρά έσοδα'),self::t('Revenue / booking','Έσοδα / κράτηση'),self::t('Revenue / participant','Έσοδα / συμμετοχή'),self::t('Occupancy','Πληρότητα'),self::t('Revenue trend','Μεταβολή εσόδων')) as $label) { echo '<th scope="col" aria-sort="none"><button type="button" class="kwb-sort">'.esc_html($label).'</button></th>'; }
+  echo '</tr></thead><tbody>';
+  foreach($rows as $row) {
+   $values=array($row['name'],$row['currency'],$row['bookings'],$row['monthly'].' / '.$row['single'],$row['participants']);
+   echo '<tr>';foreach($values as $value){echo '<td>'.esc_html($value).'</td>';}
+   foreach(array('revenue','per_booking','per_participant') as $key){echo '<td data-sort="'.esc_attr($row[$key]??-1).'">'.(null===$row[$key]?'—':wp_kses_post(wc_price($row[$key],array('currency'=>$row['currency'])))).'</td>';}
+   foreach(array('occupancy','trend') as $key){echo '<td data-sort="'.esc_attr($row[$key]??-99999).'">'.(null===$row[$key]?'—':esc_html(number_format_i18n($row[$key],1).'%')).'</td>';}
+   echo '</tr>';
+  }
+  if(!$rows){echo '<tr><td colspan="10">'.esc_html(self::t('No workshops in this period.','Δεν υπάρχουν εργαστήρια σε αυτή την περίοδο.')).'</td></tr>';}
   echo '</tbody></table></div>';
   self::form('report_export',self::t('Export report','Εξαγωγή αναφοράς'));
-  echo '<input type="hidden" name="from" value="'.esc_attr($from).'"><input type="hidden" name="to" value="'.esc_attr($to).'">';
+  foreach(array('from'=>$from,'to'=>$to,'product'=>$product) as $key=>$value){echo '<input type="hidden" name="'.esc_attr($key).'" value="'.esc_attr($value).'">';}
   self::button(self::t('Download CSV','Λήψη CSV'));echo '</section>';
  }
  public static function request($name,$default='') { $value=isset($_POST[$name]) && is_scalar($_POST[$name])?sanitize_text_field(wp_unslash($_POST[$name])):$default;return in_array($name,array('from','to','date'),true)?self::date_value($value):$value; }
@@ -152,8 +163,10 @@ final class KWB_Dashboard {
    if(!KWB_Booking::date_ok($from)||!KWB_Booking::date_ok($to)||$from>$to){wp_die('Invalid dates');}
    nocache_headers();header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="workshop-revenue.csv"');header('X-Content-Type-Options: nosniff');
    $out=fopen('php://output','w');fwrite($out,"\xEF\xBB\xBF");
-   fputcsv($out,array('Workshop','Currency','Monthly lines','Single lines','Monthly net revenue','Single net revenue'));
-   foreach(KWB_Commercial::report($from,$to) as $row){fputcsv($out,array_map(array(__CLASS__,'csv'),array_values($row)));}
+   $product=absint(self::request('product',0));if($product){self::check_product($product);}
+   $rows=KWB_Commercial::performance($from,$to,$product);
+   if($rows){fputcsv($out,array_keys(reset($rows)));}
+   foreach($rows as $row){fputcsv($out,array_map(array(__CLASS__,'csv'),array_values($row)));}
    fclose($out);exit;
   } elseif ('export'===$op) {
    nocache_headers(); header('Content-Type: text/csv; charset=UTF-8'); header('Content-Disposition: attachment; filename="inactive-workshop-customers.csv"'); header('X-Content-Type-Options: nosniff');
@@ -225,7 +238,7 @@ final class KWB_Dashboard {
   if ('loyalty'===$config['kind']) {
    $audience=!empty($config['emails'])?implode(', ',$config['emails']):($config['email']?:self::t('all matching customers','όλοι οι αντίστοιχοι πελάτες'));
    echo '<p>'.esc_html(self::terms($config['policy'])).'</p><p>'.esc_html(sprintf(self::t('Audience: %s. At least %d bookings across %d workshops.','Παραλήπτες: %s. Τουλάχιστον %d κρατήσεις σε %d εργαστήρια.'),$audience,$config['bookings'],$config['workshops'])).'</p>';
-  } else { echo '<p>'.esc_html(get_the_title($config['product']).' · '.$config['date']).'</p>'; }
+  } else { echo '<p>'.esc_html(get_the_title($config['product']).' · '.KWB_UI::date($config['date'])).'</p>'; }
   self::form('confirm',self::t('Confirm and queue','Επιβεβαίωση και προγραμματισμός'));
   echo '<input type="hidden" name="preview" value="'.esc_attr($id).'">';
   self::button(self::t('Confirm and send','Επιβεβαίωση και αποστολή'));echo '</section>';
@@ -283,7 +296,7 @@ final class KWB_Dashboard {
     echo '<article class="kwb-booking"><h4>'.esc_html($item->get_name()).'</h4><p>'.esc_html(wc_get_order_status_name($order->get_status()).' · '.self::t('Participants: ','Συμμετέχοντες: ').$item->get_quantity()).'</p><ul>';
     foreach(KWB_Booking::item_occurrences($item) as $occ) {
      $cancelled=isset(KWB_Booking::blackouts($item->get_product_id())[$occ['date']]);
-     echo '<li>'.esc_html($occ['date'].' · '.$occ['start'].'–'.$occ['end']).' ';
+     echo '<li>'.esc_html(KWB_UI::date($occ['date']).' · '.$occ['start'].'–'.$occ['end']).' ';
      if ($cancelled) { echo '<strong>'.esc_html(self::t('Cancelled','Ακυρώθηκε')).'</strong>'; }
      elseif (KWB_Booking::staff_released($item,$occ['id'])) { echo esc_html(self::t('Released by staff','Αποδεσμεύτηκε από το προσωπικό')); }
      elseif (KWB_Booking::occurrence_declined($item,$occ['id'])) {

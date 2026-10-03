@@ -75,6 +75,7 @@ jobs:
           if [ "$EDITION" = pro ]; then slug=workshop-bookings-pro-for-woocommerce; fi
           wp plugin install "build/$slug.zip" --activate --path=/tmp/family
           if [ "$STORAGE" = hpos ]; then wp option update woocommerce_custom_orders_table_enabled yes --path=/tmp/family; fi
+          wp eval-file "$GITHUB_WORKSPACE/tests/production-regression.php" --path=/tmp/family | grep production-regression-ok
           wp eval-file "$GITHUB_WORKSPACE/tests/family-smoke.php" --path=/tmp/family | grep family-smoke-ok
           wp eval-file "$GITHUB_WORKSPACE/tests/security-smoke.php" --path=/tmp/family | grep security-smoke-ok
           if [ "$EDITION" = pro ]; then wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/family | grep commercial-smoke-ok; fi
@@ -122,7 +123,21 @@ jobs:
             KWB_TEST_MODE=after-post wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family | grep rsvp-http-ok
             KWB_TEST_MODE=staff-release wp eval-file "$GITHUB_WORKSPACE/tests/rsvp-fixture.php" --path=/tmp/family
             node tests/rsvp-http.cjs staff-release
+            if [ "${{ matrix.php }}" = "8.4" ] && [ "$STORAGE" = hpos ]; then
+              wp option update WPLANG el --path=/tmp/family
+              wp user meta update admin locale el --path=/tmp/family
+              npm install --prefix /tmp/kwb-browser playwright@1.58.2
+              /tmp/kwb-browser/node_modules/.bin/playwright install --with-deps chromium
+              NODE_PATH=/tmp/kwb-browser/node_modules node tests/ui-controls.cjs
+            fi
           fi
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.edition == 'pro' && matrix.storage == 'hpos' && matrix.php == '8.4'
+        with:
+          name: production-browser-preview
+          path: ui-controls.png
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: matrix.edition == 'pro' && matrix.storage == 'hpos' && matrix.php == '8.4'
         with:

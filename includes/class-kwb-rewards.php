@@ -8,6 +8,9 @@ final class KWB_Rewards {
   add_action('woocommerce_checkout_create_order', array(__CLASS__,'attribute_order'), 20);
   add_action('woocommerce_store_api_checkout_update_order_meta', array(__CLASS__,'attribute_order'), 20);
   add_action('woocommerce_order_status_completed', array(__CLASS__,'qualify'));
+  add_action('kwb_reconcile_referrals',array(__CLASS__,'reconcile'));
+  $page=max(1,(int)get_option('kwb_referral_reconcile_page',1));
+  if(get_option('kwb_referral_reconciled')!=='1.0.1' && !wp_next_scheduled('kwb_reconcile_referrals',array($page))) { wp_schedule_single_event(time()+60,'kwb_reconcile_referrals',array($page)); }
   add_filter('woocommerce_coupon_discount_types', array(__CLASS__,'types'));
   add_filter('woocommerce_product_coupon_types', static function($types) { $types[]='kwb_reward'; return $types; });
   add_filter('woocommerce_coupon_is_valid', array(__CLASS__,'valid'), 10, 3);
@@ -43,7 +46,9 @@ final class KWB_Rewards {
   return add_query_arg('kwb_ref',$token,home_url('/'));
  }
  public static function capture() {
-  if (is_user_logged_in() || !self::settings()['enabled'] || empty($_GET['kwb_ref']) || !empty($_COOKIE['kwb_ref'])) { return; }
+  if (!self::settings()['enabled'] || empty($_GET['kwb_ref'])) { return; }
+  nocache_headers();
+  if(self::attribution()) { return; }
   if(!is_string($_GET['kwb_ref'])) { return; }
   $token=sanitize_text_field(wp_unslash($_GET['kwb_ref']));
   if (!preg_match('/^[a-zA-Z0-9]{32}$/',$token)) { return; }
@@ -52,9 +57,24 @@ final class KWB_Rewards {
   $payload=(int)$users[0].'|'.(time()+30*DAY_IN_SECONDS);
   $value=$payload.'|'.hash_hmac('sha256',$payload,wp_salt('auth'));
   wc_setcookie('kwb_ref',$value,time()+30*DAY_IN_SECONDS,is_ssl(),true);
-  nocache_headers();
+  $_COOKIE['kwb_ref']=$value;
+  if(WC()->session) { WC()->session->set('kwb_ref',$value);WC()->session->set_customer_session_cookie(true); }
+ }
+ public static function attribution() {
+  $session=WC()->session?WC()->session->get('kwb_ref'):'';
+  foreach(array($_COOKIE['kwb_ref']??'',$session) as $raw) {
+   if(!is_string($raw)) { continue; }
+   $parts=explode('|',wp_unslash($raw));
+   if(count($parts)!==3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || (int)$parts[1]<time() || (int)$parts[1]>time()+30*DAY_IN_SECONDS || !hash_equals(hash_hmac('sha256',$parts[0].'|'.$parts[1],wp_salt('auth')),$parts[2])) { continue; }
+   if(get_userdata(absint($parts[0]))) { return array('id'=>absint($parts[0]),'policy'=>self::settings()); }
+  }
+  return array();
  }
  public static function register_friend($user_id) {
+  // Link identity only; never expose guest orders to an unverified new account.
+  global $wpdb;
+  $user=get_userdata($user_id);
+  if($user) { $wpdb->update($wpdb->prefix.'kwb_guest_referrals',array('friend_id'=>$user_id),array('email_hash'=>hash('sha256',strtolower(trim($user->user_email))),'friend_id'=>0),array('%d'),array('%s','%d')); }
   if (!self::settings()['enabled']) { return; }
   $raw=$_COOKIE['kwb_ref']??'';if(!is_string($raw)){return;}
   $parts=explode('|',wp_unslash($raw));
@@ -67,27 +87,17 @@ final class KWB_Rewards {
  public static function attribute_order($order) {
   if (!$order instanceof WC_Order || $order->get_meta('_kwb_referrer') || !self::settings()['enabled']) { return; }
   $friend=(int)$order->get_customer_id();
-  $ref=$friend?(array)get_user_meta($friend,'_kwb_referrer',true):array();
-  if (!$ref && !$friend) {
-   $raw=$_COOKIE['kwb_ref']??'';
-   if (!is_string($raw)) { return; }
-   $parts=explode('|',wp_unslash($raw));
-   if (count($parts)!==3 || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || (int)$parts[1]<time() || (int)$parts[1]>time()+30*DAY_IN_SECONDS || !hash_equals(hash_hmac('sha256',$parts[0].'|'.$parts[1],wp_salt('auth')),$parts[2])) { return; }
-   $ref=array('id'=>absint($parts[0]),'policy'=>self::settings());
-  }
+  $saved=$friend?get_user_meta($friend,'_kwb_referrer',true):null;
+  $ref=is_array($saved)?$saved:array();
+  if (!$ref) { $ref=self::attribution(); }
   $owner=get_userdata(absint($ref['id']??0));
   $email=strtolower(trim($order->get_billing_email()));
   if (!$owner || !is_email($email) || $owner->ID===$friend || strtolower(trim($owner->user_email))===$email) { return; }
-  // A previous paid customer cannot become a new friend by checking out as a guest.
-  if (!$friend) {
-   $prior=wc_get_orders(array('billing_email'=>$email,'status'=>array('processing','completed'),'exclude'=>array($order->get_id()),'limit'=>1,'return'=>'ids'));
-   if ($prior) { return; }
-  }
   $ref['email']=$email;
   $order->update_meta_data('_kwb_referrer',$ref);
  }
  public static function eligible_order($order,$policy) {
-  if (!$order || !$order->has_status('completed')) { return false; }
+  if (!$order || !$order->has_status('completed') || !$order->is_paid() || !$order->get_date_paid() || $order->get_total()<=0 || !is_array($policy)) { return false; }
   foreach ($order->get_items() as $item) {
    $type=KWB_Commercial::type($item);
    if (!$type || ('any'!==$policy['mode'] && $type!==$policy['mode']) || !self::allows_product($policy,$item->get_product_id())) { continue; }
@@ -140,13 +150,26 @@ final class KWB_Rewards {
   } finally { KWB_Commercial::unlock($lock); }
  }
  public static function policy_key($policy) { return hash('sha256',wp_json_encode($policy)); }
+ /** Replay only stored attribution; never infer a referral from an email alone. */
+ public static function reconcile($page=1) {
+  $orders=wc_get_orders(array('status'=>'completed','limit'=>50,'page'=>max(1,(int)$page),'orderby'=>'ID','order'=>'ASC','type'=>'shop_order'));
+  foreach($orders as $order) { self::qualify($order->get_id()); }
+  if(count($orders)===50) { update_option('kwb_referral_reconcile_page',(int)$page+1,false);wp_schedule_single_event(time()+30,'kwb_reconcile_referrals',array((int)$page+1)); }
+  else { update_option('kwb_referral_reconciled','1.0.1',false); }
+ }
  public static function qualified($owner,$policy) {
   global $wpdb;
   $rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_referrals WHERE referrer_id=%d",$owner));
   $rows=array_merge($rows,$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}kwb_guest_referrals WHERE referrer_id=%d",$owner)));
-  return array_values(array_filter($rows,static function($row)use($policy){
-   return self::policy_key(json_decode($row->policy,true))===self::policy_key($policy) && self::eligible_order(wc_get_order($row->order_id),$policy);
-  }));
+  $qualified=array();$owner_user=get_userdata($owner);
+  foreach($rows as $row) {
+   $order=wc_get_order($row->order_id);
+   if(!$owner_user || !$order || self::policy_key(json_decode($row->policy,true))!==self::policy_key($policy) || !self::eligible_order($order,$policy)) { continue; }
+   $email=strtolower(trim($order->get_billing_email()));
+   if(!is_email($email)||!hash_equals($row->email_hash,hash('sha256',$email))||$email===strtolower(trim($owner_user->user_email))) { continue; }
+   $qualified[$row->email_hash]=$row;
+  }
+  return array_values($qualified);
  }
  public static function coupon($key,$email,$policy,$owner=0,$milestone=0) {
   $code='kwb-'.substr(hash_hmac('sha256',$key,wp_salt('auth')),0,24);

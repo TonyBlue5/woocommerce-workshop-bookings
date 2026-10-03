@@ -110,6 +110,59 @@ final class KWB_Commercial {
   return $rows;
  }
 
+ /** Sales use order dates; occupancy uses session dates, regardless of purchase date. */
+ public static function performance($from,$to,$product=0) {
+  $start=new DateTimeImmutable($from,wp_timezone());$end=new DateTimeImmutable($to,wp_timezone());
+  $days=(int)$start->diff($end)->days+1;
+  if($end<$start || $days>366) { return array(); }
+  $previous=$start->modify('-'.$days.' days')->format('Y-m-d');
+  $rows=array();$slots=array();$products=array();
+  $seed=static function($pid,$currency,$name) use (&$rows) {
+   $key=$pid.':'.$currency;
+   if(!isset($rows[$key])) { $rows[$key]=array('product'=>$pid,'name'=>$name,'currency'=>$currency,'bookings'=>0,'monthly'=>0,'single'=>0,'participants'=>0,'revenue'=>0.0,'previous_revenue'=>0.0,'previous_bookings'=>0); }
+   return $key;
+  };
+  $ids=get_posts(array('post_type'=>'product','post_status'=>array('publish','private'),'numberposts'=>-1,'fields'=>'ids','meta_key'=>KWB_Booking::META_ENABLED,'meta_value'=>'yes'));
+  foreach($ids as $pid) { if(!$product || (int)$pid===(int)$product) { $products[$pid]=true;$seed($pid,get_woocommerce_currency(),get_the_title($pid)); } }
+  foreach(self::orders(array('status'=>array('processing','completed','refunded'))) as $order) {
+   $created=$order->get_date_created();if(!$created) { continue; }$date=wp_date('Y-m-d',$created->getTimestamp(),wp_timezone());
+   foreach($order->get_items() as $item) {
+    $type=self::type($item);$pid=$item->get_product_id();
+    if(!$type || ($product && (int)$pid!==(int)$product)) { continue; }
+    $products[$pid]=true;
+    $qty=$order->has_status('refunded')?0:max(0,(int)$item->get_quantity()-absint($order->get_qty_refunded_for_item($item->get_id())));
+    if($date>=$previous && $date<=$to) {
+     $key=$seed($pid,$order->get_currency(),$item->get_name());$net=self::net($order,$item);
+     if($date>=$from) { $rows[$key]['bookings']++;$rows[$key][$type]++;$rows[$key]['participants']+=$qty;$rows[$key]['revenue']+=$net; }
+     else { $rows[$key]['previous_bookings']++;$rows[$key]['previous_revenue']+=$net; }
+    }
+    foreach(KWB_Booking::item_occurrences($item) as $occ) {
+     if($occ['date']<$from || $occ['date']>$to || isset(KWB_Booking::blackouts($pid)[$occ['date']])) { continue; }
+     if(!isset($slots[$pid][$occ['id']])) { $slots[$pid][$occ['id']]=array('capacity'=>0,'used'=>0); }
+     $slots[$pid][$occ['id']]['capacity']=max($slots[$pid][$occ['id']]['capacity'],(int)($occ['capacity']??0));
+     if(!KWB_Booking::staff_released($item,$occ['id']) && !(KWB_Settings::get('release_on_no',1)&&KWB_Booking::occurrence_declined($item,$occ['id']))) { $slots[$pid][$occ['id']]['used']+=$qty; }
+    }
+   }
+  }
+  foreach($products as $pid=>$unused) {
+   for($month=$start->modify('first day of this month');$month<=$end;$month=$month->modify('+1 month')) {
+    foreach(KWB_Booking::month_occurrences($pid,$month->format('Y-m'),false) as $occ) {
+     if($occ['date']<$from || $occ['date']>$to) { continue; }
+     if(!isset($slots[$pid][$occ['id']])) { $slots[$pid][$occ['id']]=array('capacity'=>(int)$occ['capacity'],'used'=>0); }
+    }
+   }
+  }
+  foreach($rows as &$row) {
+   $capacity=0;$used=0;foreach($slots[$row['product']]??array() as $slot) { $capacity+=$slot['capacity'];$used+=$slot['used']; }
+   $row['capacity']=$capacity;$row['occupied']=$used;$row['occupancy']=$capacity?100*$used/$capacity:null;
+   $row['per_booking']=$row['bookings']?$row['revenue']/$row['bookings']:null;
+   $row['per_participant']=$row['participants']?$row['revenue']/$row['participants']:null;
+   $row['trend']=$row['previous_revenue']>0?100*($row['revenue']-$row['previous_revenue'])/$row['previous_revenue']:null;
+  }unset($row);
+  uasort($rows,static function($a,$b){return strcmp($a['currency'],$b['currency'])?:($b['revenue']<=>$a['revenue']);});
+  return $rows;
+ }
+
  public static function customers() {
   $rows = array();
   foreach (self::orders(array('status'=>array('processing','completed'))) as $order) {
