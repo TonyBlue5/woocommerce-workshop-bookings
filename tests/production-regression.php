@@ -10,6 +10,7 @@ $p=new WC_Product_Simple();$p->set_name('Regression workshop');$p->set_regular_p
 update_post_meta($pid,'_kwb_weekly_schedule','4|12:00|13:00|10');
 $item=new WC_Order_Item_Product();$item->set_product($p);
 $occ=array('id'=>KWB_Booking::occ_id($pid,'2026-10-08','12:00','13:00'),'date'=>'2026-10-08','start'=>'12:00','end'=>'13:00','capacity'=>10);
+$GLOBALS['kwbp_occ']=$occ;
 KWB_Booking::order_meta($item,'',array('kwb_booking'=>array('type'=>'monthly','month'=>'2026-10','months'=>array('2026-10'),'occurrences'=>array($occ))),null);
 $item->add_meta_data('_kwb_future_technical','secret-hash');$item->add_meta_data('_third_party_private','private-value');$item->save();
 $formatted=$item->get_formatted_meta_data('',true);
@@ -29,7 +30,7 @@ $policy=KWB_Rewards::sanitize(array('enabled'=>1,'friends'=>2,'mode'=>'monthly')
 $owner=wp_insert_user(array('user_login'=>'regression-owner','user_pass'=>wp_generate_password(),'user_email'=>'regression-owner@example.org'));
 function kwbp_cookie($owner) { $payload=$owner.'|'.(time()+DAY_IN_SECONDS);return $payload.'|'.hash_hmac('sha256',$payload,wp_salt('auth')); }
 function kwbp_order($p,$email,$customer=0,$type='monthly',$qty=1,$date='2026-10-03') {
- global $occ;
+ $occ=$GLOBALS['kwbp_occ'];
  $o=wc_create_order(array('customer_id'=>$customer));$o->set_billing_email($email);$o->set_date_created($date.' 12:00:00');
  $id=$o->add_product($p,$qty,array('subtotal'=>40*$qty,'total'=>40*$qty));$i=$o->get_item($id);$i->add_meta_data('_kwb_booking_type',$type);$i->add_meta_data('_kwb_occurrences',wp_json_encode(array($occ)));$i->save();
  $o->calculate_totals();do_action('woocommerce_checkout_create_order',$o);$o->save();return $o;
@@ -60,6 +61,7 @@ KWB_Rewards::reconcile();kwbp_assert(count(get_posts(array('post_type'=>'shop_co
 unset($_COOKIE['kwb_ref']);
 $q=new WC_Product_Simple();$q->set_name('Regression performance');$q->set_regular_price(40);$qid=$q->save();update_post_meta($qid,'_kwb_enabled','yes');
 update_post_meta($qid,'_kwb_weekly_schedule','4|12:00|13:00|10');$occ['id']=KWB_Booking::occ_id($qid,'2026-10-08','12:00','13:00');
+$GLOBALS['kwbp_occ']=$occ;
 $sale=kwbp_order($q,'regression-sale@example.org',0,'monthly',2);$sale->update_status('completed');
 $prev=kwbp_order($q,'regression-prev@example.org',0,'single',1,'2026-09-03');$prev->update_status('completed');
 $r=KWB_Commercial::performance('2026-10-01','2026-10-31',$qid)[$qid.':'.get_woocommerce_currency()];
