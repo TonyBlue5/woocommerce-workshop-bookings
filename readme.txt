@@ -53,7 +53,7 @@ Current features:
 = 1.0.1 =
 Controlled dates, workshop selectors, referral fixes, private metadata protection and workshop performance ranking.
 
-= 1.0.1 =
+= 1.0.0 =
 * Separate Lite and Pro packages with preserved booking data.
 * Signed guest referral attribution saved on checkout orders; email-based deduplication and self-referral protection.
 * Reusable native WordPress message templates and revenue exports.

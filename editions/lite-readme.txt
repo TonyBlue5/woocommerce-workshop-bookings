@@ -84,6 +84,10 @@ New checkout requests reserve their places while payment is pending. Cancel aban
 == Changelog ==
 
 = 1.0.1 =
+* Controlled date fields display DD/MM/YYYY and store ISO dates, including newly added blackout rows.
+* Private booking metadata is hidden; friendly booking details follow the current interface language.
+
+= 1.0.0 =
 * First separately packaged Lite edition.
 * Existing booking metadata and calendar URLs preserved.
 * Core booking, multi-month purchases, capacity and basic reminders.

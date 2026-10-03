@@ -50,7 +50,7 @@ final class KWB_GitHub_Updater {
    'installation'=>'<ol><li>Back up your database and files. Install and activate WooCommerce.</li><li>Deactivate Lite or the legacy edition, leaving its data intact.</li><li>Upload the installable Pro ZIP and activate it.</li><li>Open WooCommerce → Workshop Bookings and configure your workshop products.</li></ol>',
    'faq'=>'<h3>Does guest checkout qualify for referrals?</h3><p>Yes, with signed attribution saved at checkout, a valid billing email and a completed eligible paid order. Self-referrals and duplicate friends are rejected.</p><h3>Do calendar links require API keys?</h3><p>No.</p><h3>Are monthly purchases automatic subscriptions?</h3><p>No. They reserve the selected months in one WooCommerce purchase.</p>',
    'screenshots'=>'<ol><li>Visual workshop availability calendar.</li><li>Workshop schedules and capacity.</li><li>Analytics and lapsed customers.</li><li>Native message designer.</li><li>My Account workshops and referrals.</li></ol><p>See the packaged documentation for the screenshot capture checklist. Product screenshots will be attached before marketplace submission.</p>',
-   'changelog'=>$r['body']??'<h4>1.0.1</h4><p>Separate Lite and Pro packages; guest referral attribution; reusable message templates; revenue exports; preserved booking metadata.</p>',
+   'changelog'=>$r['body']??'<h4>1.0.1</h4><p>Controlled date fields; workshop-only selectors; signed guest and logged-in referrals; localized booking summaries; workshop performance ranking.</p>',
    'support'=>'<p>Contact e-iT through <a href="https://it-e.gr">it-e.gr</a>. Include the plugin, WordPress, WooCommerce and PHP versions and reproduction steps. Remove personal data and credentials from diagnostics.</p>'
   ));
  }
