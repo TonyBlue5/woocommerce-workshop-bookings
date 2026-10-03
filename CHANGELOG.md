@@ -1,3 +1,12 @@
+## 1.0.2
+
+- Add an order-based referral ledger with a restartable migration that preserves both legacy tables. Count each billing email once per referrer and policy; keep all purchase evidence for refund/cancellation recalculation.
+- Persist final Store API billing details while preserving first-touch attribution and policy; include the referrer token on new attributed orders.
+- Check delayed payment completion and exclude orders with refunds. Existing milestone coupon identities are preserved.
+- Hide `_kwb_*` metadata even when historical participation metadata is incomplete. Test real WooCommerce admin/editor and HTML/plain-text email templates.
+- Add the reported ankanaris@gmail.com two-guest scenario, dashboard/coupon assertions, repeat purchases, policy/referrer isolation, guest-account linking and additive migration tests.
+- Format customer CSV dates as DD/MM/YYYY. Preserve existing controlled date inputs, workshop selectors and performance ranking.
+
 ## 1.0.1 — Production regression fixes
 
 - Controlled DD/MM/YYYY date fields with hidden ISO values, including dynamic blackout rows.

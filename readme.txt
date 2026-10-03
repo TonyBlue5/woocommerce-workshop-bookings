@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,12 @@ Current features:
 7. Configure reminders and calendar options under WooCommerce > Workshop Bookings.
 
 == Changelog ==
+
+= 1.0.2 =
+* Preserve attributed purchases in an additive order ledger; count unique billing emails per referrer and policy, including guests and later accounts (Pro).
+* Keep checkout attribution when Store API drafts change billing email; retain eligibility if another unrefunded purchase exists (Pro).
+* Hide internal metadata on incomplete historical booking items; verify actual admin and HTML/plain email templates.
+* Extend packaged regression coverage and use DD/MM/YYYY in customer CSV exports.
 
 = 1.0.1 =
 Controlled dates, workshop selectors, referral fixes, private metadata protection and workshop performance ranking.

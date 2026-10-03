@@ -3,7 +3,7 @@
  * Plugin Name: Workshop Bookings Pro for WooCommerce by e-iT
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  * Description: API-free WooCommerce workshop bookings with visual availability, monthly or single participation, reminders, RSVP, shared capacity and calendar exports.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author URI: https://it-e.gr
  * Author: e-iT
  * Requires Plugins: woocommerce
@@ -32,7 +32,7 @@ if (plugin_basename(__FILE__)!==$kwb_legacy && (in_array($kwb_legacy,(array)get_
 }
 unset($kwb_legacy);
 define('KWB_EDITION','pro');
-define( 'KWB_VERSION', '1.0.1' );
+define( 'KWB_VERSION', '1.0.2' );
 define( 'KWB_PLUGIN_FILE', __FILE__ );
 define( 'KWB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 

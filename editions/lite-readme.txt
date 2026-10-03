@@ -4,7 +4,7 @@ Tags: bookings, workshops, calendar, woocommerce, classes
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 Requires Plugins: woocommerce
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -82,6 +82,12 @@ New checkout requests reserve their places while payment is pending. Cancel aban
 5. Greek booking interface.
 
 == Changelog ==
+
+= 1.0.2 =
+* Preserve attributed purchases in an additive order ledger; count unique billing emails per referrer and policy, including guests and later accounts (Pro).
+* Keep checkout attribution when Store API drafts change billing email; retain eligibility if another unrefunded purchase exists (Pro).
+* Hide internal metadata on incomplete historical booking items; verify actual admin and HTML/plain email templates.
+* Extend packaged regression coverage and use DD/MM/YYYY in customer CSV exports.
 
 = 1.0.1 =
 * Controlled date fields display DD/MM/YYYY and store ISO dates, including newly added blackout rows.

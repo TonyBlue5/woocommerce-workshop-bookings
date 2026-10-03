@@ -48,6 +48,8 @@ final class KWB_Booking {
   return array_unique(array_merge($keys,array('_kwb_booking_type','_kwb_booking_month','_kwb_booking_months','_kwb_occurrences','_kwb_confirmed_occurrences','_kwb_declined_occurrences','_kwb_staff_released_occurrences')));
  }
  public static function visible_meta($data,$item) {
+  // Hide technical data even on incomplete or historical booking items.
+  foreach($data as $key=>$meta) { if(isset($meta->key) && strpos((string)$meta->key,'_kwb_')===0) { unset($data[$key]); } }
   if(!$item instanceof WC_Order_Item_Product || !in_array($item->get_meta('_kwb_booking_type'),array('monthly','single'),true)) { return $data; }
   $labels=array('Participation type','Τύπος συμμετοχής','Month','Μήνας','Months','Μήνες','Sessions','Συναντήσεις','Workshop date','Ημερομηνία εργαστηρίου','Workshop time','Ώρα εργαστηρίου');
   foreach($data as $key=>$meta) { if(isset($meta->key) && (strpos((string)$meta->key,'_')===0 || in_array($meta->key,$labels,true))) { unset($data[$key]); } }

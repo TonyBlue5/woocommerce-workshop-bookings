@@ -71,7 +71,7 @@ $pending=kwbp_order($p,'regression-pending@example.org');
 kwbp_assert(count(KWB_Rewards::qualified($owner,$policy))===3,'nonqualifying purchase counted');
 $friend=wp_insert_user(array('user_login'=>'regression-later','user_pass'=>wp_generate_password(),'user_email'=>'regression-a@example.org'));
 global $wpdb;
-kwbp_assert((int)$wpdb->get_var($wpdb->prepare("SELECT friend_id FROM {$wpdb->prefix}kwb_guest_referrals WHERE email_hash=%s",hash('sha256','regression-a@example.org')))===$friend,'later account not linked to guest history');
+kwbp_assert((int)$wpdb->get_var($wpdb->prepare("SELECT friend_id FROM {$wpdb->prefix}kwb_referral_orders WHERE email_hash=%s",hash('sha256','regression-a@example.org')))===$friend,'later account not linked to guest history');
 $later=kwbp_order($p,'regression-a@example.org',$friend);$later->update_status('completed');kwbp_assert(count(KWB_Rewards::qualified($owner,$policy))===3,'guest registration double-counted');
 $b->update_status('refunded');$logged->update_status('cancelled');kwbp_assert(count(KWB_Rewards::qualified($owner,$policy))===1,'refund/cancellation remained eligible');
 wp_set_current_user($owner);kwbp_assert(!KWB_Rewards::valid(true,new WC_Coupon($coupons[0]->ID)),'invalid milestone coupon usable');
