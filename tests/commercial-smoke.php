@@ -149,7 +149,7 @@ kwbc_assert(strpos($html,$coupon->get_code())===false,'account leaked another cu
 wp_set_current_user($admin->ID);ob_start();KWB_Dashboard::render();$english=ob_get_clean();
 add_filter('locale',static function(){return 'el';});add_filter('determine_locale',static function(){return 'el';});
 ob_start();KWB_Dashboard::render();$greek=ob_get_clean();
-kwbc_assert(strpos($english,'Booking overview')!==false && strpos($greek,'Επισκόπηση κρατήσεων')!==false,'bilingual admin rendering failed');
+kwbc_assert(strpos($english,'Workshop performance')!==false && strpos($greek,'Απόδοση εργαστηρίων')!==false,'bilingual admin rendering failed');
 if (getenv('GITHUB_WORKSPACE')) {
  $dir=getenv('GITHUB_WORKSPACE').'/ui-preview';wp_mkdir_p($dir);
  $style='<style>'.file_get_contents(KWB_PLUGIN_DIR.'assets/kwb-dashboard.css').'</style>';

@@ -87,7 +87,8 @@ final class KWB_Rewards {
  public static function attribute_order($order) {
   if (!$order instanceof WC_Order || $order->get_meta('_kwb_referrer') || !self::settings()['enabled']) { return; }
   $friend=(int)$order->get_customer_id();
-  $ref=$friend?(array)get_user_meta($friend,'_kwb_referrer',true):array();
+  $saved=$friend?get_user_meta($friend,'_kwb_referrer',true):null;
+  $ref=is_array($saved)?$saved:array();
   if (!$ref) { $ref=self::attribution(); }
   $owner=get_userdata(absint($ref['id']??0));
   $email=strtolower(trim($order->get_billing_email()));
