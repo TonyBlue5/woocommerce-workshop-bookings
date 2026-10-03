@@ -4,7 +4,7 @@ Tags: woocommerce, bookings, workshops, calendar, icalendar
 Requires at least: 6.4
 Requires PHP: 7.4
 Requires Plugins: woocommerce
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,7 +50,10 @@ Current features:
 
 == Changelog ==
 
-= 1.0.0 =
+= 1.0.1 =
+Controlled dates, workshop selectors, referral fixes, private metadata protection and workshop performance ranking.
+
+= 1.0.1 =
 * Separate Lite and Pro packages with preserved booking data.
 * Signed guest referral attribution saved on checkout orders; email-based deduplication and self-referral protection.
 * Reusable native WordPress message templates and revenue exports.

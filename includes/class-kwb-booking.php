@@ -40,12 +40,35 @@ final class KWB_Booking {
 		add_action('woocommerce_email_after_order_table',array(__CLASS__,'email_links'),20,4);
 		add_action('woocommerce_order_details_after_order_table',array(__CLASS__,'order_links'),20);
 		add_action('template_redirect',array(__CLASS__,'ics_download'));
+		add_filter('woocommerce_order_item_get_formatted_meta_data',array(__CLASS__,'visible_meta'),100,2);
+		add_filter('woocommerce_hidden_order_itemmeta',array(__CLASS__,'hidden_meta'));
 	}
 
+ public static function hidden_meta($keys) {
+  return array_unique(array_merge($keys,array('_kwb_booking_type','_kwb_booking_month','_kwb_booking_months','_kwb_occurrences')));
+ }
+ public static function visible_meta($data,$item) {
+  if(!$item instanceof WC_Order_Item_Product || !in_array($item->get_meta('_kwb_booking_type'),array('monthly','single'),true)) { return $data; }
+  $labels=array('Participation type','Τύπος συμμετοχής','Month','Μήνας','Months','Μήνες','Sessions','Συναντήσεις','Workshop date','Ημερομηνία εργαστηρίου','Workshop time','Ώρα εργαστηρίου');
+  foreach($data as $key=>$meta) { if(isset($meta->key) && (strpos((string)$meta->key,'_')===0 || in_array($meta->key,$labels,true))) { unset($data[$key]); } }
+  $type=$item->get_meta('_kwb_booking_type');$occurrences=self::item_occurrences($item);
+  $friendly=array('participation_type_meta'=>KWB_I18n::t($type),'sessions'=>count($occurrences));
+  if('monthly'===$type) {
+   $months=json_decode((string)$item->get_meta('_kwb_booking_months'),true);
+   if(!is_array($months)||!$months) { $months=array($item->get_meta('_kwb_booking_month')); }
+   $months=array_filter($months,static function($month){return is_string($month)&&self::date_ok($month.'-01');});
+   $friendly[count($months)>1?'months_label':'month']=implode(', ',array_map(array(__CLASS__,'month_label'),$months));
+  } elseif($occurrences) {
+   $friendly['workshop_date']=KWB_UI::date($occurrences[0]['date']);$friendly['workshop_time']=$occurrences[0]['start'].'–'.$occurrences[0]['end'];
+  }
+  foreach($friendly as $key=>$value) { $label=KWB_I18n::t($key);$data['kwb_'.$key]=(object)array('key'=>$label,'value'=>$value,'display_key'=>esc_html($label),'display_value'=>esc_html((string)$value)); }
+  return $data;
+ }
 	public static function admin_assets($hook){
 		if(!in_array($hook,array('post.php','post-new.php'),true))return;
 		$screen=get_current_screen();if(!$screen||'product'!==$screen->post_type)return;
-		wp_enqueue_script('kwb-admin',plugins_url('../assets/kwb-admin.js',__FILE__),array(),KWB_VERSION,true);
+		KWB_UI::assets();
+		wp_enqueue_script('kwb-admin',plugins_url('../assets/kwb-admin.js',__FILE__),array('kwb-controls'),KWB_VERSION,true);
 		wp_localize_script('kwb-admin','KWB_ADMIN_I18N',array('days'=>KWB_I18n::t('days'),'capacity'=>KWB_I18n::t('capacity'),'remove'=>KWB_I18n::t('remove')));
 		wp_enqueue_style('kwb-admin',plugins_url('../assets/kwb-admin.css',__FILE__),array(),KWB_VERSION);
 	}
@@ -116,7 +139,7 @@ final class KWB_Booking {
 	private static function schedule_row($r){$day_names=KWB_I18n::t('days');$days=array();foreach($day_names as$i=>$name)$days[$i+1]=$name;?>
 		<div class="kwb-schedule-row"><select class="kwb-day"><?php foreach($days as$k=>$v):?><option value="<?php echo esc_attr($k);?>" <?php selected((int)$r['weekday'],$k);?>><?php echo esc_html($v);?></option><?php endforeach;?></select><input class="kwb-start" type="time" value="<?php echo esc_attr($r['start']);?>"><input class="kwb-end" type="time" value="<?php echo esc_attr($r['end']);?>"><input class="kwb-capacity" type="number" min="1" max="10000" value="<?php echo esc_attr($r['capacity']);?>" placeholder="<?php echo esc_attr(KWB_I18n::t('capacity'));?>"><button type="button" class="button-link-delete kwb-remove-row"><?php echo esc_html(KWB_I18n::t('remove'));?></button></div>
 	<?php }
-	private static function blackout_row($date){?><div class="kwb-blackout-row"><input class="kwb-blackout-date" type="date" value="<?php echo esc_attr($date);?>"><button type="button" class="button-link-delete kwb-remove-row"><?php echo esc_html(KWB_I18n::t('remove'));?></button></div><?php }
+	private static function blackout_row($date){?><div class="kwb-blackout-row"><?php KWB_UI::date_input('', $date); ?><button type="button" class="button-link-delete kwb-remove-row"><?php echo esc_html(KWB_I18n::t('remove'));?></button></div><?php }
 
 
 	public static function save($id){

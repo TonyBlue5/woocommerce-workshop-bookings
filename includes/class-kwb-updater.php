@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class KWB_GitHub_Updater {
-	const VERSION='1.0.0';
+	const VERSION='1.0.1';
 	const API='https://api.github.com/repos/TonyBlue5/woocommerce-workshop-bookings/releases/latest';
 	const SLUG='workshop-bookings-pro-for-woocommerce';
 	const PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0r9E6m6osaldFxI1ALSi\nTaUaT5q0WtaA1tyjKwdNAyvkZKuZ2gppLEW8184AX+qg5BYp7YX/65nx1gYdHord\nXHv1YD+al4A6AcTZB6OV7omma/m0XauuyJWIW3jNyGyYkBDEdX3sfAlLG18VCBnv\n2FQQa4OcjXYSh03neJUHofXTL7N2G9YHqAr3BQdY3xTKAB5f/KdSGsAgNjJ+h9Sk\n7zB7E2LhcMBfKCnbkydbHmApoaiYq75OVizCFfbWkO3L0PuUpknLv8mo30Lw1y5a\noAUMbBjKmSri1L6Kwi7gq00ahJQ1cgLQhysXb5j9l7rgYu2jwnRneJ7K0qA3cgZc\ntLOQ8Bs2J/4pMuTpxIoqyHDS/GX/7+HPP86tNHCzEU2ckYSXkwzU7pyxgAFYO0Ul\nbQxBlBX74CqUWhDamRM+SbtPE3f0ZD+UJHwJhCbsSB9d4++QOL9ZVAcadpoCSGsO\nhRUTbOk+nue0VOihhqMw3u2vxn73qVhhesLz9BlqSheg/pWNk1wN6EBZWheC/xGR\n9J1r1aD5HgCIhR52RTbExZ4ANMZO2ZAFfGh8RynZiEx311mH2X0UPBxpdm8mqDsS\nC933cyvkeKiiqmnTMU9QF1HX07A+xyh3eGJiQNGmXL3GRrPS6O52tfla9wj0y77d\n6uBSKpmDU/gAfp1MiX3mz6cCAwEAAQ==\n-----END PUBLIC KEY-----";
@@ -50,7 +50,7 @@ final class KWB_GitHub_Updater {
    'installation'=>'<ol><li>Back up your database and files. Install and activate WooCommerce.</li><li>Deactivate Lite or the legacy edition, leaving its data intact.</li><li>Upload the installable Pro ZIP and activate it.</li><li>Open WooCommerce → Workshop Bookings and configure your workshop products.</li></ol>',
    'faq'=>'<h3>Does guest checkout qualify for referrals?</h3><p>Yes, with signed attribution saved at checkout, a valid billing email and a completed eligible paid order. Self-referrals and duplicate friends are rejected.</p><h3>Do calendar links require API keys?</h3><p>No.</p><h3>Are monthly purchases automatic subscriptions?</h3><p>No. They reserve the selected months in one WooCommerce purchase.</p>',
    'screenshots'=>'<ol><li>Visual workshop availability calendar.</li><li>Workshop schedules and capacity.</li><li>Analytics and lapsed customers.</li><li>Native message designer.</li><li>My Account workshops and referrals.</li></ol><p>See the packaged documentation for the screenshot capture checklist. Product screenshots will be attached before marketplace submission.</p>',
-   'changelog'=>$r['body']??'<h4>1.0.0</h4><p>Separate Lite and Pro packages; guest referral attribution; reusable message templates; revenue exports; preserved booking metadata.</p>',
+   'changelog'=>$r['body']??'<h4>1.0.1</h4><p>Separate Lite and Pro packages; guest referral attribution; reusable message templates; revenue exports; preserved booking metadata.</p>',
    'support'=>'<p>Contact e-iT through <a href="https://it-e.gr">it-e.gr</a>. Include the plugin, WordPress, WooCommerce and PHP versions and reproduction steps. Remove personal data and credentials from diagnostics.</p>'
   ));
  }

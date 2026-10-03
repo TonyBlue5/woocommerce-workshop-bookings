@@ -16,7 +16,7 @@ for(const edition of ['lite','pro']){
   main=main.replace(/^require_once.*class-kwb-(updater|commercial|rewards|campaigns|dashboard|messages|admin-calendar)\.php.*\n/gm,'').replace(/^KWB_GitHub_Updater::init\(\);\n/m,'').replace(/^\s*KWB_(Commercial|Messages|Admin_Calendar)::init\(\);\n/gm,'');
  }
  files[slug+'/'+slug+'.php']=main;
- const common=['i18n','settings','booking','rsvp'];
+ const common=['i18n','settings','ui','booking','rsvp'];
  for(const name of edition==='lite'?common:[...common,'updater','commercial','rewards','campaigns','dashboard','messages','admin-calendar']){
   let content=read('includes/class-kwb-'+name+'.php');
   if(edition==='lite'){

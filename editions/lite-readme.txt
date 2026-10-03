@@ -4,7 +4,7 @@ Tags: bookings, workshops, calendar, woocommerce, classes
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 Requires Plugins: woocommerce
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -83,7 +83,7 @@ New checkout requests reserve their places while payment is pending. Cancel aban
 
 == Changelog ==
 
-= 1.0.0 =
+= 1.0.1 =
 * First separately packaged Lite edition.
 * Existing booking metadata and calendar URLs preserved.
 * Core booking, multi-month purchases, capacity and basic reminders.
@@ -91,5 +91,5 @@ New checkout requests reserve their places while payment is pending. Cancel aban
 
 == Upgrade Notice ==
 
-= 1.0.0 =
+= 1.0.1 =
 Back up your site and deactivate the legacy or Pro edition before activating Lite. Existing bookings are retained.

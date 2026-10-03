@@ -1,3 +1,12 @@
+## 1.0.1 — Production regression fixes
+
+- Controlled DD/MM/YYYY date fields with hidden ISO values, including dynamic blackout rows.
+- Workshop-only searchable selectors for rewards, cancellations, staff calendar and analytics.
+- Signed guest and logged-in referral attribution, session fallback, expired-cookie recovery, billing identity deduplication and linked guest history. Reconcile stored attribution in bounded background batches.
+- Hide private booking metadata and regenerate localized friendly booking details without changing stored metadata.
+- Workshop ranking, booking mix, net revenue, revenue per booking/participant, equal-length period comparison, estimated session occupancy, sortable columns and CSV export.
+- PHP and browser regression tests; separate signed candidate artifacts without stable release publication.
+
 # 1.0.0 — Product family
 
 - Independently installable Lite and Pro ZIPs, with commercial modules and the external updater excluded from Lite.

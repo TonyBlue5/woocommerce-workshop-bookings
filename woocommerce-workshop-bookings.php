@@ -3,7 +3,7 @@
  * Plugin Name: Workshop Bookings Pro for WooCommerce by e-iT
  * Plugin URI: https://github.com/TonyBlue5/woocommerce-workshop-bookings
  * Description: API-free WooCommerce workshop bookings with visual availability, monthly or single participation, reminders, RSVP, shared capacity and calendar exports.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author URI: https://it-e.gr
  * Author: e-iT
  * Requires Plugins: woocommerce
@@ -32,7 +32,7 @@ if (plugin_basename(__FILE__)!==$kwb_legacy && (in_array($kwb_legacy,(array)get_
 }
 unset($kwb_legacy);
 define('KWB_EDITION','pro');
-define( 'KWB_VERSION', '1.0.0' );
+define( 'KWB_VERSION', '1.0.1' );
 define( 'KWB_PLUGIN_FILE', __FILE__ );
 define( 'KWB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
@@ -51,6 +51,7 @@ add_action(
 
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-i18n.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-settings.php';
+require_once KWB_PLUGIN_DIR . 'includes/class-kwb-ui.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-booking.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-rsvp.php';
 require_once KWB_PLUGIN_DIR . 'includes/class-kwb-updater.php';
@@ -84,6 +85,7 @@ add_action(
 
 		KWB_Settings::init();
 		KWB_Booking::init();
+        KWB_UI::init();
 		KWB_RSVP::init();
 		KWB_Commercial::init();
 		KWB_Messages::init();

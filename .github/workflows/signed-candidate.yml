@@ -1,0 +1,52 @@
+name: Signed test candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Require successful gates on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for workflow in compatibility.yml security.yml product-family.yml; do
+            gh api "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$SHA&per_page=100" > /tmp/runs.json
+            node -e 'const r=require("/tmp/runs.json").workflow_runs.filter(x=>x.event==="push"||x.event==="pull_request");if(!r.length||r[0].conclusion!=="success")process.exit(1)'
+          done
+      - name: Build and sign both installable editions
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.KWB_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$RELEASE_SIGNING_KEY"
+          umask 077
+          key=$(mktemp)
+          trap 'rm -f "$key"' EXIT
+          printf '%s' "$RELEASE_SIGNING_KEY" > "$key"
+          node tools/build.cjs
+          for slug in workshop-bookings-for-woocommerce workshop-bookings-pro-for-woocommerce; do
+            unzip -tq "build/$slug.zip"
+            openssl dgst -sha256 -sign "$key" -out "build/$slug.zip.sig" "build/$slug.zip"
+            openssl dgst -sha256 -verify release-public.pem -signature "build/$slug.zip.sig" "build/$slug.zip"
+          done
+          printf '%s\n' '${{ github.sha }}' > build/COMMIT.txt
+          cp release-public.pem build/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signed-test-candidate
+          retention-days: 30
+          path: |
+            build/workshop-bookings-for-woocommerce.zip*
+            build/workshop-bookings-pro-for-woocommerce.zip*
+            build/COMMIT.txt
+            build/release-public.pem

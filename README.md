@@ -17,7 +17,7 @@ Existing `_kwb_*` product/order metadata, option keys, original referral rows an
 
 ## Referrals
 
-Signed first-touch cookies last up to 30 days. At checkout the plugin stores referrer, policy and normalized billing email on the order, so asynchronous payment completion works without cookies or account creation. Only completed paid eligible booking lines qualify. Self-referral, repeated account/email, expired/tampered cookies and prior paid guest customers are rejected. The original account-referral table and additive guest table share one database identity lock. Registered-account fallback preserves old orders. Partial qualifying-item refunds and full refunds revoke unused reward eligibility; already redeemed discounts are not reversed. Policies are fixed at registration or checkout. Keep WordPress salts stable.
+Signed first-touch cookies last up to 30 days. At checkout the plugin stores referrer, policy and normalized billing email on the order, so asynchronous payment completion works without cookies or account creation. Only completed paid eligible booking lines qualify. Self-referral, repeated account/email, expired/tampered cookies are rejected. The original account-referral table and additive guest table share one database identity lock. Registered-account fallback preserves old orders. Version 1.0.1 reconciles previously attributed completed orders in background batches. Orders without stored attribution cannot be retroactively assigned from an email alone. Partial qualifying-item refunds and full refunds revoke unused reward eligibility; already redeemed discounts are not reversed. Policies are fixed at registration or checkout. Keep WordPress salts stable.
 
 ## Reports and messages
 
@@ -31,7 +31,7 @@ Product family acceptance builds and installs the actual ZIPs, checks PHP syntax
 
 ## Signed releases
 
-The manually dispatched release workflow keeps the existing RSA public key and GitHub signing secret. It builds the Pro asset name expected by the new updater and verifies the signature before publication. Do not dispatch it until a release is approved. This development task produces unsigned manual-install test packages and does not publish marketplace listings. Paid checkout/license entitlement integration follows provider selection; signature verification alone is not purchase enforcement.
+The manually dispatched release workflow keeps the existing RSA public key and GitHub signing secret. It builds the Pro asset name expected by the new updater and verifies the signature before publication. Do not dispatch it until a release is approved. The separate signed-candidate workflow verifies green compatibility, security and packaged acceptance workflows before signing both installable ZIPs. It uploads test artifacts without publishing a release or changing the stable updater channel. Paid checkout/license entitlement integration follows provider selection; signature verification alone is not purchase enforcement.
 
 ## Marketplace preparation
 
