@@ -24,6 +24,25 @@ const assert=require('node:assert/strict');
   assert.equal(await page.locator('.select2-results__option').filter({hasText:'Regression regular product'}).count(),0);
   await page.locator('.select2-results__option').filter({hasText:'Regression workshop'}).click();
   const product=await page.locator('select[name="product"]').inputValue();assert.ok(Number(product)>0);
+  const cancellation=page.locator('.kwb-date-display');
+  await cancellation.fill('08/10/2026');await cancellation.press('Tab');
+  assert.equal(await page.locator('.kwb-date-iso').inputValue(),'2026-10-08');
+  for(const tab of ['customers','referrals']) {
+   await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-dashboard&tab='+tab);
+   const field=page.locator('select[name="products[]"]');assert.equal(await field.evaluate(el=>el.multiple),true);
+   await page.locator('.select2-search__field').last().fill('Regression');
+   await page.locator('.select2-results__option').filter({hasText:'Regression workshop'}).click();
+   assert.ok((await field.evaluate(el=>Array.from(el.selectedOptions,o=>o.value))).includes(product));
+   assert.ok((await page.locator('.select2-selection__choice').allTextContents()).join(' ').includes('Regression workshop'));
+   assert.equal(await page.locator('input[type="date"],input[type="month"]').count(),0);
+  }
+  await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-dashboard&product='+product);
+  await page.locator('.select2-selection__clear').click();
+  assert.ok(['0',''].includes(await page.locator('select[name="product"]').inputValue()));
+  await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-calendar&product='+product+'&month=2026-10');
+  assert.equal(await page.locator('.kwb-date-display').inputValue(),'10/2026');
+  await page.locator('.kwb-date-display').fill('11/2026');await page.locator('.kwb-date-display').press('Tab');
+  assert.equal(await page.locator('.kwb-date-iso').inputValue(),'2026-11');
   await page.goto('http://127.0.0.1:8099/wp-admin/post.php?post='+product+'&action=edit');
   await page.locator('a[href="#kwb_booking_product_data"]').click();
   await page.locator('#kwb-add-blackout').click();

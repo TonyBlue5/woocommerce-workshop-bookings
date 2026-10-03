@@ -25,10 +25,23 @@ final class KWB_Commercial {
  }
 
  public static function install() {
-  if ( '2' === get_option('kwb_commercial_schema') ) { return; }
+  if ( '3' === get_option('kwb_commercial_schema') ) { return; }
   global $wpdb;
   require_once ABSPATH . 'wp-admin/includes/upgrade.php';
   $charset = $wpdb->get_charset_collate();
+  // Keep every attributed purchase. Eligibility is deduplicated by billing email,
+  // referrer and policy when read, never by a guest's zero customer ID.
+  dbDelta("CREATE TABLE {$wpdb->prefix}kwb_referral_orders (
+   order_id bigint(20) unsigned NOT NULL,
+   friend_id bigint(20) unsigned NOT NULL DEFAULT 0,
+   email_hash varchar(64) NOT NULL,
+   referrer_id bigint(20) unsigned NOT NULL,
+   policy_key varchar(64) NOT NULL,
+   policy longtext NOT NULL,
+   PRIMARY KEY  (order_id),
+   KEY referral_policy (referrer_id,policy_key),
+   KEY email_hash (email_hash)
+  ) $charset;");
   dbDelta("CREATE TABLE {$wpdb->prefix}kwb_guest_referrals (
    email_hash varchar(64) NOT NULL,
    friend_id bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -58,7 +71,13 @@ final class KWB_Commercial {
    KEY state (state)
   ) $charset;");
   if ( $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_referrals'") && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_deliveries'") && $wpdb->get_var("SHOW TABLES LIKE '{$wpdb->prefix}kwb_guest_referrals'") ) {
-   update_option('kwb_commercial_schema', '2', false);
+   // Additive and restartable: retain both legacy tables and their original rows.
+   foreach(array('kwb_referrals','kwb_guest_referrals') as $legacy) {
+    $copied=$wpdb->query("INSERT IGNORE INTO {$wpdb->prefix}kwb_referral_orders (order_id,friend_id,email_hash,referrer_id,policy_key,policy) SELECT order_id,friend_id,email_hash,referrer_id,SHA2(policy,256),policy FROM {$wpdb->prefix}{$legacy}");
+    if(false===$copied) { return; }
+   }
+   update_option('kwb_commercial_schema', '3', false);
+   delete_option('kwb_referral_reconcile_page');
   }
  }
 

@@ -78,7 +78,7 @@ final class KWB_Dashboard {
   if ('referrals'===$tab) {
    self::form('settings',self::t('Referral rewards','Ανταμοιβές συστάσεων'));
    self::policy_fields(KWB_Rewards::settings(),true);
-   echo '<p>'.esc_html(self::t('Each new friend counts once by account or billing email, including guest checkout. A completed paid eligible booking is required. Refunded qualifying items stop counting. Terms are saved at registration or checkout.','Κάθε νέος φίλος μετρά μία φορά με λογαριασμό ή email χρέωσης, ακόμη και ως επισκέπτης. Απαιτείται ολοκληρωμένη πληρωμένη επιλέξιμη κράτηση. Οι επιστραφείσες αγορές δεν προσμετρώνται. Οι όροι αποθηκεύονται κατά την εγγραφή ή το checkout.')).'</p>';
+   echo '<p>'.esc_html(self::t('Each billing email counts once per referrer and policy, including guest checkout. A completed paid eligible booking is required. Refunded qualifying items stop counting. Terms are saved at registration or checkout.','Κάθε email χρέωσης μετρά μία φορά ανά referrer και πολιτική, ακόμη και ως επισκέπτης. Απαιτείται ολοκληρωμένη πληρωμένη επιλέξιμη κράτηση. Οι επιστραφείσες αγορές δεν προσμετρώνται. Οι όροι αποθηκεύονται κατά την εγγραφή ή το checkout.')).'</p>';
    self::button(self::t('Save terms','Αποθήκευση όρων'));
   } elseif ('customers'===$tab) {
    $days=max(1,min(3650,absint($_GET['days']??90)));
@@ -111,7 +111,7 @@ final class KWB_Dashboard {
   echo '<p>Powered by e-iT – Information Technology &amp; e-commerce</p></div>';
  }
  public static function message_fields() {
-  $templates=KWB_Messages::templates();$key=sanitize_key(is_scalar($_GET['template']??'')?$_GET['template']:'');$entry=$templates[$key]??array();
+  $templates=KWB_Messages::templates();$key=sanitize_key(is_scalar($_GET['template']??'')?($_GET['template']??''):'');$entry=$templates[$key]??array();
   echo '<p>'.esc_html(self::t('Start from a saved template:','Έναρξη από αποθηκευμένο πρότυπο:')).' ';
   foreach($templates as $id=>$row) { echo '<a class="button" href="'.esc_url(add_query_arg('template',$id,self::url(sanitize_key($_GET['tab']??'customers')))).'">'.esc_html($row['name']).'</a> '; }
   echo '</p>';
@@ -173,7 +173,7 @@ final class KWB_Dashboard {
    $out=fopen('php://output','w'); fwrite($out,"\xEF\xBB\xBF");
    fputcsv($out,array('Name','Email','Last booking','Paid booking lines','Different workshops','Marketing consent'));
    foreach(KWB_Commercial::inactive(max(1,min(3650,absint(self::request('days',90))))) as $row) {
-    fputcsv($out,array_map(array(__CLASS__,'csv'),array($row['name'],$row['email'],wp_date('Y-m-d',$row['last']),$row['bookings'],count($row['workshops']),'not recorded')));
+    fputcsv($out,array_map(array(__CLASS__,'csv'),array($row['name'],$row['email'],wp_date('d/m/Y',$row['last']),$row['bookings'],count($row['workshops']),'not recorded')));
    }
    fclose($out); exit;
   } elseif ('preview'===$op) {

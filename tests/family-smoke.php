@@ -44,7 +44,8 @@ add_user_meta($friend,'_kwb_referrer',array('id'=>$owner,'policy'=>$policy));
 $registered=kwbf_order($pid,'guest-a@example.org',$friend);$registered->update_status('completed');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'guest to registered conversion counted twice');
 $alternate=kwbf_order($pid,'alternate-billing@example.org',$friend);$alternate->update_status('completed');
-kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'account converted from guest bypassed deduplication using alternate billing email');
+kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===3,'distinct billing email was incorrectly collapsed into account identity');
+$alternate->update_status('cancelled');
 $self=kwbf_order($pid,'family-owner@example.org');$self->update_status('completed');
 kwbf_assert(!$self->get_meta('_kwb_referrer'),'self referral attributed');
 $_COOKIE['kwb_ref']=kwbf_cookie($owner).'tampered';
@@ -57,9 +58,13 @@ $_COOKIE['kwb_ref']=kwbf_cookie($owner);
 $changed=kwbf_order($pid,'before@example.org');$changed->set_billing_email('after@example.org');$changed->save();$changed->update_status('completed');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'changed attribution email qualified');
 $a->update_status('refunded');
+kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'a second valid purchase should preserve unique-email eligibility');
+$again->update_status('cancelled');$registered->update_status('cancelled');
 kwbf_assert(count(KWB_Rewards::qualified($owner,$policy))===1,'refunded guest remained eligible');
 $coupon=new WC_Coupon($coupons[0]->ID);wp_set_current_user($owner);
 kwbf_assert(!KWB_Rewards::valid(true,$coupon),'guest refund did not revoke unredeemed reward');
+// Restore a paid purchase for the independent two-recipient loyalty scenario below.
+$registered->update_status('completed');
 // Sanitized HTML remains rich text while removing active content.
 $clean=KWB_Messages::clean('<h2>Hello</h2><script>alert(1)</script><a href="javascript:alert(1)">Link</a><img src="https://example.org/x.png" onerror="alert(1)">');
 kwbf_assert(strpos($clean,'<h2>')!==false && strpos($clean,'<script')===false && strpos($clean,'javascript:')===false && strpos($clean,'onerror=')===false,'template HTML sanitization failed');

@@ -76,6 +76,7 @@ jobs:
           wp plugin install "build/$slug.zip" --activate --path=/tmp/family
           if [ "$STORAGE" = hpos ]; then wp option update woocommerce_custom_orders_table_enabled yes --path=/tmp/family; fi
           wp eval-file "$GITHUB_WORKSPACE/tests/production-regression.php" --path=/tmp/family | grep production-regression-ok
+          wp eval-file "$GITHUB_WORKSPACE/tests/blocker-regression.php" --path=/tmp/family | grep blocker-regression-ok
           wp eval-file "$GITHUB_WORKSPACE/tests/family-smoke.php" --path=/tmp/family | grep family-smoke-ok
           wp eval-file "$GITHUB_WORKSPACE/tests/security-smoke.php" --path=/tmp/family | grep security-smoke-ok
           if [ "$EDITION" = pro ]; then wp eval-file "$GITHUB_WORKSPACE/tests/commercial-smoke.php" --path=/tmp/family | grep commercial-smoke-ok; fi
@@ -129,6 +130,9 @@ jobs:
               npm install --prefix /tmp/kwb-browser playwright@1.58.2
               /tmp/kwb-browser/node_modules/.bin/playwright install --with-deps chromium
               NODE_PATH=/tmp/kwb-browser/node_modules node tests/ui-controls.cjs
+              KWB_TEST_MODE=prepare wp eval-file "$GITHUB_WORKSPACE/tests/checkout-fixture.php" --path=/tmp/family
+              NODE_PATH=/tmp/kwb-browser/node_modules node tests/checkout-browser.cjs
+              wp eval-file "$GITHUB_WORKSPACE/tests/checkout-fixture.php" --path=/tmp/family | grep browser-checkout-ok
             fi
           fi
       - uses: actions/upload-artifact@v4
