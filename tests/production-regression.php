@@ -9,7 +9,9 @@ kwbp_assert(strpos($html,'value="03/10/2026"')!==false&&strpos($html,'type="hidd
 $p=new WC_Product_Simple();$p->set_name('Regression workshop');$p->set_regular_price(40);$pid=$p->save();update_post_meta($pid,'_kwb_enabled','yes');
 update_post_meta($pid,'_kwb_weekly_schedule','4|12:00|13:00|10');
 $item=new WC_Order_Item_Product();$item->set_product($p);
-$occ=array('id'=>KWB_Booking::occ_id($pid,'2026-10-08','12:00','13:00'),'date'=>'2026-10-08','start'=>'12:00','end'=>'13:00','capacity'=>10);
+$fixture_month=((int)wp_date('Y')+2).'-10';$GLOBALS['kwbp_from']=$fixture_month.'-01';
+$session=(new DateTimeImmutable($GLOBALS['kwbp_from']))->modify('first thursday of this month')->format('Y-m-d');
+$occ=array('id'=>KWB_Booking::occ_id($pid,$session,'12:00','13:00'),'date'=>$session,'start'=>'12:00','end'=>'13:00','capacity'=>10);
 $GLOBALS['kwbp_occ']=$occ;
 KWB_Booking::order_meta($item,'',array('kwb_booking'=>array('type'=>'monthly','month'=>'2026-10','months'=>array('2026-10'),'occurrences'=>array($occ))),null);
 $item->add_meta_data('_kwb_future_technical','secret-hash');$item->add_meta_data('_third_party_private','private-value');$item->save();
@@ -28,9 +30,14 @@ $results=KWB_UI::search_results('Regression');kwbp_assert(isset($results[$pid])&
 wp_set_current_user(0);kwbp_assert(!KWB_UI::search_results('Regression'),'search disclosed products to guest');
 $policy=KWB_Rewards::sanitize(array('enabled'=>1,'friends'=>2,'mode'=>'monthly'));update_option('kwb_referral_settings',$policy);
 $owner=wp_insert_user(array('user_login'=>'regression-owner','user_pass'=>wp_generate_password(),'user_email'=>'regression-owner@example.org'));
+parse_str((string)wp_parse_url(KWB_Rewards::link($owner),PHP_URL_QUERY),$query);
+$_GET['kwb_ref']=$query['kwb_ref'];$_COOKIE['kwb_ref']='expired-or-invalid';
+KWB_Rewards::capture();kwbp_assert((int)(KWB_Rewards::attribution()['id']??0)===$owner,'link capture did not replace invalid cookie');
+unset($_GET['kwb_ref']);
 function kwbp_cookie($owner) { $payload=$owner.'|'.(time()+DAY_IN_SECONDS);return $payload.'|'.hash_hmac('sha256',$payload,wp_salt('auth')); }
-function kwbp_order($p,$email,$customer=0,$type='monthly',$qty=1,$date='2026-10-03') {
+function kwbp_order($p,$email,$customer=0,$type='monthly',$qty=1,$date='') {
  $occ=$GLOBALS['kwbp_occ'];
+ $date=$date?:$GLOBALS['kwbp_from'];
  $o=wc_create_order(array('customer_id'=>$customer));$o->set_billing_email($email);$o->set_date_created($date.' 12:00:00');
  $id=$o->add_product($p,$qty,array('subtotal'=>40*$qty,'total'=>40*$qty));$i=$o->get_item($id);$i->add_meta_data('_kwb_booking_type',$type);$i->add_meta_data('_kwb_occurrences',wp_json_encode(array($occ)));$i->save();
  $o->calculate_totals();do_action('woocommerce_checkout_create_order',$o);$o->save();return $o;
@@ -43,6 +50,8 @@ $coupons=get_posts(array('post_type'=>'shop_coupon','numberposts'=>-1,'meta_key'
 $_COOKIE['kwb_ref']=kwbp_cookie($owner);$again=kwbp_order($p,'REGRESSION-A@example.org');$again->update_status('completed');kwbp_assert(count(KWB_Rewards::qualified($owner,$policy))===2,'same billing email counted twice');
 $registered=wp_insert_user(array('user_login'=>'regression-existing','user_pass'=>wp_generate_password(),'user_email'=>'regression-existing@example.org'));
 delete_user_meta($registered,'_kwb_referrer');wp_set_current_user($registered);
+unset($_COOKIE['kwb_ref']);$_GET['kwb_ref']=$query['kwb_ref'];KWB_Rewards::capture();unset($_GET['kwb_ref']);
+kwbp_assert((int)(KWB_Rewards::attribution()['id']??0)===$owner,'logged-in link click lost attribution');
 $logged=kwbp_order($p,'regression-existing@example.org',$registered);$logged->update_status('completed');kwbp_assert(count(KWB_Rewards::qualified($owner,$policy))===3,'existing logged-in cookie referral failed');
 wp_set_current_user(0);
 $self=kwbp_order($p,'regression-owner@example.org');$self->update_status('completed');kwbp_assert(!$self->get_meta('_kwb_referrer'),'self-referral accepted');
@@ -60,13 +69,15 @@ wp_set_current_user($owner);kwbp_assert(!KWB_Rewards::valid(true,new WC_Coupon($
 KWB_Rewards::reconcile();kwbp_assert(count(get_posts(array('post_type'=>'shop_coupon','numberposts'=>-1,'meta_key'=>'_kwb_owner','meta_value'=>$owner)))===1,'reconciliation duplicated coupon');
 unset($_COOKIE['kwb_ref']);
 $q=new WC_Product_Simple();$q->set_name('Regression performance');$q->set_regular_price(40);$qid=$q->save();update_post_meta($qid,'_kwb_enabled','yes');
-update_post_meta($qid,'_kwb_weekly_schedule','4|12:00|13:00|10');$occ['id']=KWB_Booking::occ_id($qid,'2026-10-08','12:00','13:00');
+update_post_meta($qid,'_kwb_weekly_schedule','4|12:00|13:00|10');$occ['id']=KWB_Booking::occ_id($qid,$session,'12:00','13:00');
 $GLOBALS['kwbp_occ']=$occ;
 $sale=kwbp_order($q,'regression-sale@example.org',0,'monthly',2);$sale->update_status('completed');
-$prev=kwbp_order($q,'regression-prev@example.org',0,'single',1,'2026-09-03');$prev->update_status('completed');
-$r=KWB_Commercial::performance('2026-10-01','2026-10-31',$qid)[$qid.':'.get_woocommerce_currency()];
+$previous=(new DateTimeImmutable($GLOBALS['kwbp_from']))->modify('-31 days')->format('Y-m-d');
+$prev=kwbp_order($q,'regression-prev@example.org',0,'single',1,$previous);$prev->update_status('completed');
+$r=KWB_Commercial::performance($fixture_month.'-01',$fixture_month.'-31',$qid)[$qid.':'.get_woocommerce_currency()];
 kwbp_assert($r['bookings']===1&&$r['participants']===2&&$r['revenue']===80.0&&$r['per_booking']===80.0&&$r['per_participant']===40.0,'performance revenue/quantity arithmetic incorrect');
-kwbp_assert($r['trend']===100.0&&$r['capacity']===50&&$r['occupied']===3&&abs($r['occupancy']-6)<0.01,'previous period or session-based occupancy incorrect');
+$capacity=count(KWB_Booking::month_occurrences($qid,$fixture_month,false))*10;
+kwbp_assert($r['trend']===100.0&&$r['capacity']===$capacity&&$r['occupied']===3&&abs($r['occupancy']-300/$capacity)<0.01,'previous period or session-based occupancy incorrect');
 wp_set_current_user($admin->ID);$_GET=array('from'=>'2026-10-01','to'=>'2026-10-31','product'=>$qid);ob_start();KWB_Dashboard::analytics();$html=ob_get_clean();kwbp_assert(strpos($html,'kwb-performance')!==false&&strpos($html,'kwb_search_workshops')!==false&&strpos($html,'type="date"')===false,'analytics controls not integrated');
 update_option('kwb_browser_product',$pid,false);
 echo "production-regression-ok\n";

@@ -30,6 +30,10 @@ const assert=require('node:assert/strict');
   await blackout.fill('25/12/2026');await blackout.press('Tab');
   assert.ok((await page.locator('#_kwb_blackouts').inputValue()).includes('2026-12-25'));
   assert.equal(await page.locator('#kwb_booking_product_data input[type="date"]').count(),0);
+  await Promise.all([page.waitForURL(url=>url.searchParams.get('message')==='1'),page.locator('#publish').click()]);
+  await page.locator('a[href="#kwb_booking_product_data"]').click();
+  assert.ok((await page.locator('#_kwb_blackouts').inputValue()).includes('2026-12-25'));
+  assert.equal(await page.locator('#kwb-blackout-rows .kwb-date-display').last().inputValue(),'25/12/2026');
   await page.screenshot({path:'ui-controls.png',fullPage:true});
   console.log('ui-controls-ok');
  } finally { await browser.close(); }
