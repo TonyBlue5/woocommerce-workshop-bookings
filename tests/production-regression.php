@@ -33,6 +33,10 @@ kwbp_assert(strpos($results[$pid],'<')===false&&strpos($results[$pid],'onerror')
 ob_start();KWB_UI::workshop_select('product',array($pid),false,true);$select=ob_get_clean();
 kwbp_assert(strpos($select,'onerror')===false&&strpos($select,'data-allow_clear="true"')!==false,'selected label unsafe or all-workshops reset unavailable');
 remove_filter('the_title',$unsafe_title,10);
+$encoded_title=static function($title,$id)use($pid){return (int)$id===(int)$pid?'&lt;img src=x onerror=alert(1)&gt;':$title;};
+add_filter('the_title',$encoded_title,10,2);ob_start();KWB_UI::workshop_select('product',array($pid));$select=ob_get_clean();remove_filter('the_title',$encoded_title,10);
+preg_match('/<option selected[^>]*>(.*?)<\/option>/s',$select,$option);
+kwbp_assert(isset($option[1])&&strpos(html_entity_decode($option[1],ENT_QUOTES,'UTF-8'),'<img')===false,'entity-encoded title becomes active on SelectWoo second rendering');
 wp_set_current_user(0);kwbp_assert(!KWB_UI::search_results('Regression'),'search disclosed products to guest');
 $policy=KWB_Rewards::sanitize(array('enabled'=>1,'friends'=>2,'mode'=>'monthly'));update_option('kwb_referral_settings',$policy);
 $owner=wp_insert_user(array('user_login'=>'regression-owner','user_pass'=>wp_generate_password(),'user_email'=>'regression-owner@example.org'));
