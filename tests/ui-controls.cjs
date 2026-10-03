@@ -9,6 +9,7 @@ const assert=require('node:assert/strict');
   await Promise.all([page.waitForURL('**/wp-admin/**'),page.locator('#wp-submit').click()]);
   await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-dashboard&from=2026-10-03&to=2026-10-31');
   const dates=page.locator('.kwb-date-display');await dates.first().waitFor();
+  assert.ok((await page.locator('.kwb-hero h1').textContent()).includes('εργαστήριά'));
   assert.equal(await dates.first().inputValue(),'03/10/2026');
   await dates.first().fill('15/10/2026');await dates.first().press('Tab');
   assert.equal(await page.locator('input.kwb-date-iso').first().inputValue(),'2026-10-15');
