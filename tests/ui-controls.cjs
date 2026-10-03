@@ -29,7 +29,7 @@ const assert=require('node:assert/strict');
   assert.equal(await page.locator('.kwb-date-iso').inputValue(),'2026-10-08');
   for(const tab of ['customers','referrals']) {
    await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-dashboard&tab='+tab);
-   const field=page.locator('select[name="products[]"]');assert.equal(await field.getAttribute('multiple'),'multiple');
+   const field=page.locator('select[name="products[]"]');assert.equal(await field.evaluate(el=>el.multiple),true);
    await page.locator('.select2-search__field').last().fill('Regression');
    await page.locator('.select2-results__option').filter({hasText:'Regression workshop'}).click();
    assert.ok((await field.evaluate(el=>Array.from(el.selectedOptions,o=>o.value))).includes(product));

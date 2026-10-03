@@ -11,6 +11,7 @@ if(getenv('KWB_TEST_MODE')==='prepare') {
  $policy=KWB_Rewards::sanitize(array('enabled'=>1,'friends'=>2,'mode'=>'monthly','product'=>$pid));update_option('kwb_referral_settings',$policy);
  foreach(array('cart'=>'[woocommerce_cart]','checkout'=>'[woocommerce_checkout]') as $slug=>$content){$id=wp_insert_post(array('post_type'=>'page','post_status'=>'publish','post_title'=>'Browser '.$slug,'post_content'=>$content));update_option('woocommerce_'.$slug.'_page_id',$id);}
  update_option('woocommerce_enable_guest_checkout','yes');update_option('woocommerce_enable_signup_and_login_from_checkout','no');update_option('woocommerce_default_country','GB');update_option('woocommerce_default_customer_address','base');
+ update_option('woocommerce_coming_soon','no');
  update_option('woocommerce_bacs_settings',array('enabled'=>'yes','title'=>'Bank transfer','description'=>'CI payment','instructions'=>''));
  $fixture=array('owner'=>$owner->ID,'product'=>$pid,'policy'=>$policy,'referral'=>KWB_Rewards::link($owner->ID),'product_url'=>get_permalink($pid),'checkout'=>wc_get_checkout_url());
  update_option('kwb_checkout_fixture',$fixture,false);file_put_contents(getenv('GITHUB_WORKSPACE').'/checkout-fixture.json',wp_json_encode($fixture));return;

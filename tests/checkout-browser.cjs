@@ -6,6 +6,7 @@ const fixture=require('../checkout-fixture.json');
  try {
   for(const email of ['browser-a@example.org','browser-b@example.org','browser-a@example.org']) {
    const context=await browser.newContext({locale:'en-US'}),page=await context.newPage();
+   try {
    await page.goto(fixture.referral);
    const cookie=(await context.cookies()).find(c=>c.name==='kwb_ref');
    assert.ok(cookie&&cookie.httpOnly,'referral click must set HttpOnly signed cookie');
@@ -22,6 +23,10 @@ const fixture=require('../checkout-fixture.json');
    await page.locator('#place_order').click();
    await page.waitForURL(url=>url.href.includes('order-received'),{timeout:60000});
    const rendered=await page.locator('body').innerText();assert.ok(!rendered.includes('_kwb_'),'thank-you page leaks internal metadata');
+   } catch(error) {
+    console.error('Checkout URL:',page.url(),'Page:',(await page.locator('body').innerText()).slice(0,6000));
+    await page.screenshot({path:'checkout-failure.png',fullPage:true});throw error;
+   }
    await context.close();
   }
   console.log('browser-checkout-created');
