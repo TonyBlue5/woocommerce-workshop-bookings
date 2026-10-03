@@ -32,8 +32,8 @@ const assert=require('node:assert/strict');
    const field=page.locator('select[name="products[]"]');assert.equal(await field.getAttribute('multiple'),'multiple');
    await page.locator('.select2-search__field').last().fill('Regression');
    await page.locator('.select2-results__option').filter({hasText:'Regression workshop'}).click();
-   assert.ok((await field.inputValue())===product);
-   assert.ok((await page.locator('.select2-selection__choice').textContent()).includes('Regression workshop'));
+   assert.ok((await field.evaluate(el=>Array.from(el.selectedOptions,o=>o.value))).includes(product));
+   assert.ok((await page.locator('.select2-selection__choice').allTextContents()).join(' ').includes('Regression workshop'));
    assert.equal(await page.locator('input[type="date"],input[type="month"]').count(),0);
   }
   await page.goto('http://127.0.0.1:8099/wp-admin/admin.php?page=kwb-dashboard&product='+product);
