@@ -16,14 +16,15 @@ final class KWB_UI {
   echo '<span class="kwb-date-control" data-month="'.($month?'1':'0').'"><input type="text" class="kwb-date-display" value="'.esc_attr($display).'" placeholder="'.($month?'MM/YYYY':'DD/MM/YYYY').'" autocomplete="off" '.$extra.'><input type="hidden" class="kwb-date-iso" name="'.esc_attr($name).'" value="'.esc_attr($value).'"></span>';
  }
  public static function workshop_select($name,$ids=array(),$multiple=false,$all=false) {
-  echo '<select class="wc-product-search" name="'.esc_attr($name).'" '.($multiple?'multiple="multiple"':'').' style="width:100%;min-width:240px" data-action="kwb_search_workshops" data-placeholder="'.esc_attr($all?self::t('All workshops','Όλα τα εργαστήρια'):self::t('Search workshops','Αναζήτηση εργαστηρίων')).'" '.(!$all&&!$multiple?'required':'').'>';
+  echo '<select class="wc-product-search" name="'.esc_attr($name).'" '.($multiple?'multiple="multiple"':'').' style="width:100%;min-width:240px" data-action="kwb_search_workshops" data-allow_clear="'.($all||$multiple?'true':'false').'" data-placeholder="'.esc_attr($all?self::t('All workshops','Όλα τα εργαστήρια'):self::t('Search workshops','Αναζήτηση εργαστηρίων')).'" '.(!$all&&!$multiple?'required':'').'>';
   if(!$multiple) { echo '<option value="'.($all?'0':'').'">'.esc_html($all?self::t('All workshops','Όλα τα εργαστήρια'):self::t('Select workshop','Επιλέξτε εργαστήριο')).'</option>'; }
-  foreach((array)$ids as $id) { if($id && KWB_Booking::enabled($id) && current_user_can('edit_post',$id)) { echo '<option selected value="'.esc_attr($id).'">'.esc_html(get_the_title($id)).'</option>'; } }
+  foreach((array)$ids as $id) { if($id && KWB_Booking::enabled($id) && current_user_can('edit_post',$id)) { echo '<option selected value="'.esc_attr($id).'">'.htmlspecialchars(wp_strip_all_tags(get_the_title($id)),ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8',true).'</option>'; } }
   echo '</select>';
  }
  public static function search_results($term) {
   $query=new WP_Query(array('post_type'=>'product','post_status'=>array('publish','private','draft','pending'),'s'=>$term,'posts_per_page'=>30,'orderby'=>'title','order'=>'ASC','meta_key'=>KWB_Booking::META_ENABLED,'meta_value'=>'yes'));
-  $results=array();foreach($query->posts as $post) { if(current_user_can('edit_post',$post->ID)) { $results[$post->ID]=get_the_title($post->ID); } }
+  // WooCommerce's SelectWoo configuration returns markup unchanged.
+  $results=array();foreach($query->posts as $post) { if(current_user_can('edit_post',$post->ID)) { $results[$post->ID]=esc_html(wp_strip_all_tags(get_the_title($post->ID))); } }
   return $results;
  }
  public static function search() {
